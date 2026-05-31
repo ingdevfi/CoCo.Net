@@ -1,0 +1,243 @@
+using ComplexityCoverage.Application.DTOs;
+using ComplexityCoverage.Domain.Interfaces;
+using ComplexityCoverage.Domain.Models;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+
+namespace ComplexityCoverage.Application.Services
+{
+    public class CoverageOrchestrator(
+        ITestRunner testRunner,
+        IReadOnlyList<(string Name, IComplexityStrategy Strategy)> strategies,
+        IReportGenerator reportGenerator,
+        ISourceFileDiscoveryService fileDiscoveryService,
+        ILogger? logger = null)
+    {
+
+        readonly ITestRunner _testRunner = testRunner;
+        readonly IReadOnlyList<(string Name, IComplexityStrategy Strategy)> _strategies = strategies;
+        readonly IReportGenerator _reportGenerator = reportGenerator;
+        readonly ISourceFileDiscoveryService _fileDiscoveryService = fileDiscoveryService;
+        readonly ILogger? _logger = logger;
+
+        static readonly Dictionary<string, double> EmptyStrategyDict = [];
+
+        public async Task<CoverageResponse> RunCoverageAnalysisAsync(AnalysisConfig config, string outputPath)
+        {
+            try
+            {
+                var sw = Stopwatch.StartNew();
+
+                var validationError = ValidateConfig(config);
+                if (validationError is not null)
+                    return validationError;
+
+                var solutionDir = Path.GetDirectoryName(config.SolutionPath)
+                    ?? Path.GetPathRoot(config.SolutionPath)
+                    ?? throw new InvalidOperationException("Cannot determine solution directory");
+
+                var sourceFiles = await DiscoverFilesAsync(solutionDir);
+                if (sourceFiles is null)
+                    return new CoverageResponse(false, 0.0, EmptyStrategyDict, [], "No source files found");
+
+                var coverageMap = await RunTestsAsync(config);
+                var (fileResults, fileWeightDetails, overallWeightedByStrategy) = ProcessFiles(sourceFiles, coverageMap);
+
+                var totalLines = fileResults.Sum(f => f.TotalLines);
+                var totalCoveredLines = fileResults.Sum(f => f.CoveredLines);
+                var overallLineCoverage = totalLines > 0 ? (double)totalCoveredLines / totalLines * 100 : 0;
+
+                sw.Stop();
+                await GenerateReportAsync(outputPath, overallLineCoverage, overallWeightedByStrategy, fileWeightDetails, totalLines, sw.Elapsed);
+
+                _logger?.Information("Analysis completed successfully");
+                return new CoverageResponse(true, overallLineCoverage, overallWeightedByStrategy, fileResults, null);
+            }
+            catch (Exception ex)
+            {
+                _logger?.Error("Coverage analysis failed", ex);
+                return new CoverageResponse(false, 0.0, EmptyStrategyDict, [], $"Coverage analysis failed: {ex.Message}");
+            }
+        }
+
+        CoverageResponse? ValidateConfig(AnalysisConfig config)
+        {
+            if (!File.Exists(config.SolutionPath))
+            {
+                var msg = "Solution file not found";
+                _logger?.Warning(msg);
+                return new CoverageResponse(false, 0.0, EmptyStrategyDict, [], msg);
+            }
+
+            if (!config.SolutionPath.EndsWith(".sln", StringComparison.OrdinalIgnoreCase)
+                && !config.SolutionPath.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase))
+            {
+                var msg = "Invalid solution file extension";
+                _logger?.Warning(msg);
+                return new CoverageResponse(false, 0.0, EmptyStrategyDict, [], msg);
+            }
+
+            return null;
+        }
+
+        async Task<IEnumerable<SourceFile>?> DiscoverFilesAsync(string solutionDir)
+        {
+            _logger?.Information($"Discovering source files in: {solutionDir}");
+            var sourceFiles = await _fileDiscoveryService.DiscoverSourceFilesAsync(solutionDir);
+
+            if (!sourceFiles.Any())
+            {
+                _logger?.Warning("No source files found");
+                return null;
+            }
+
+            _logger?.Information($"Found {sourceFiles.Count()} source files");
+            return sourceFiles;
+        }
+
+        async Task<CoverageMap> RunTestsAsync(AnalysisConfig config)
+        {
+            if (!string.IsNullOrEmpty(config.CoverageFilePath))
+            {
+                _logger?.Information($"Using provided coverage file: {config.CoverageFilePath} (format: {config.CoverageFormat ?? "auto"})");
+                return await _testRunner.ParseCoverageAsync(config.CoverageFilePath, config.CoverageFormat);
+            }
+
+            var testTarget = !string.IsNullOrEmpty(config.TestProjectPath)
+                ? config.TestProjectPath
+                : config.SolutionPath;
+
+            _logger?.Information($"Running tests from: {testTarget}");
+            var timeout = config.TestTimeout ?? TimeSpan.FromMinutes(15);
+            return await _testRunner.RunTestsAsync(testTarget, timeout);
+        }
+
+        (List<FileCoverageResult> FileResults, List<FileWeightDetails> WeightDetails, Dictionary<string, double> OverallByStrategy) ProcessFiles(
+            IEnumerable<SourceFile> sourceFiles, CoverageMap coverageMap)
+        {
+            var fileResultsBag = new ConcurrentBag<FileCoverageResult>();
+            var fileWeightDetailsBag = new ConcurrentBag<FileWeightDetails>();
+
+            // Pre-build normalized path lookup for O(1) matching instead of O(N) scan per file
+            var normalizedCoverageMap = BuildNormalizedCoverageMap(coverageMap);
+
+            // Per-strategy accumulators
+            var coveredWeightByStrategy = new ConcurrentDictionary<string, double>();
+            var totalWeightByStrategy = new ConcurrentDictionary<string, double>();
+            foreach (var (name, _) in _strategies)
+            {
+                coveredWeightByStrategy[name] = 0;
+                totalWeightByStrategy[name] = 0;
+            }
+
+            _logger?.Information($"Processing {sourceFiles.Count()} files with {_strategies.Count} strategies...");
+            var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
+
+            Parallel.ForEach(sourceFiles, parallelOptions, file =>
+            {
+                var (result, weightDetails, strategyMetrics) = ProcessSingleFile(file, coverageMap, normalizedCoverageMap);
+                fileResultsBag.Add(result);
+                fileWeightDetailsBag.Add(weightDetails);
+
+                foreach (var (name, covered, total) in strategyMetrics)
+                {
+                    coveredWeightByStrategy.AddOrUpdate(name, covered, (_, v) => v + covered);
+                    totalWeightByStrategy.AddOrUpdate(name, total, (_, v) => v + total);
+                }
+            });
+
+            var overallByStrategy = _strategies.ToDictionary(
+                s => s.Name,
+                s => totalWeightByStrategy[s.Name] > 0
+                    ? coveredWeightByStrategy[s.Name] / totalWeightByStrategy[s.Name] * 100
+                    : 0.0);
+
+            return ([.. fileResultsBag], [.. fileWeightDetailsBag], overallByStrategy);
+        }
+
+        (FileCoverageResult Result, FileWeightDetails WeightDetails, List<(string Name, double Covered, double Total)> StrategyMetrics) ProcessSingleFile(
+            SourceFile file, CoverageMap coverageMap, Dictionary<string, IReadOnlyDictionary<int, bool>> normalizedCoverageMap)
+        {
+            // Fast path lookup using exact match then normalized map
+            IReadOnlyDictionary<int, bool>? lineCoverage = null;
+            if (!coverageMap.FileCoverage.TryGetValue(file.FilePath, out lineCoverage))
+            {
+                var normalizedPath = NormalizePath(file.FilePath);
+                normalizedCoverageMap.TryGetValue(normalizedPath, out lineCoverage);
+            }
+
+            var coveredLines = 0;
+            if (lineCoverage != null)
+            {
+                foreach (var line in file.Lines)
+                {
+                    if (lineCoverage.TryGetValue(line.LineNumber, out var isCovered) && isCovered)
+                        coveredLines++;
+                }
+            }
+
+            var lineCoveragePercentage = file.Lines.Count > 0
+                ? (double)coveredLines / file.Lines.Count * 100
+                : 0;
+
+            // Calculate weighted coverage for each strategy
+            var weightedByStrategy = new Dictionary<string, double>();
+            var strategyMetrics = new List<(string Name, double Covered, double Total)>();
+
+            foreach (var (name, strategy) in _strategies)
+            {
+                var weights = strategy.CalculateWeights(file);
+                var fileCoveredWeight = 0.0;
+                var fileAllWeight = 0.0;
+
+                for (int i = 0; i < file.Lines.Count; i++)
+                {
+                    var weight = weights[i];
+                    fileAllWeight += weight;
+                    if (lineCoverage != null
+                        && lineCoverage.TryGetValue(file.Lines[i].LineNumber, out var isCovered) && isCovered)
+                    {
+                        fileCoveredWeight += weight;
+                    }
+                }
+
+                var weightedPct = fileAllWeight > 0 ? fileCoveredWeight / fileAllWeight * 100 : 0;
+                weightedByStrategy[name] = weightedPct;
+                strategyMetrics.Add((name, fileCoveredWeight, fileAllWeight));
+            }
+
+            var result = new FileCoverageResult(file.FilePath, lineCoveragePercentage, weightedByStrategy, coveredLines, file.Lines.Count);
+            var weightDetails = new FileWeightDetails(file.FilePath, lineCoveragePercentage, weightedByStrategy);
+
+            return (result, weightDetails, strategyMetrics);
+        }
+
+        async Task GenerateReportAsync(string outputPath, double overallLineCoverage, Dictionary<string, double> overallWeightedByStrategy, List<FileWeightDetails> fileWeightDetails, int totalLines, TimeSpan duration)
+        {
+            var strategyNames = _strategies.Select(s => s.Name).ToList();
+            var weightedReport = new WeightedReport(strategyNames, overallLineCoverage, overallWeightedByStrategy, fileWeightDetails, totalLines, duration);
+            _logger?.Information($"Generating report at: {outputPath}");
+            await _reportGenerator.GenerateReportAsync(weightedReport, outputPath);
+        }
+
+        /// <summary>
+        /// Pre-builds a dictionary of normalized paths → coverage data for O(1) lookup.
+        /// </summary>
+        static Dictionary<string, IReadOnlyDictionary<int, bool>> BuildNormalizedCoverageMap(CoverageMap coverageMap)
+        {
+            var map = new Dictionary<string, IReadOnlyDictionary<int, bool>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (key, value) in coverageMap.FileCoverage)
+            {
+                var normalized = NormalizePath(key);
+                map.TryAdd(normalized, value);
+            }
+            return map;
+        }
+
+        static string NormalizePath(string path)
+        {
+            path = path.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+            try { return Path.GetFullPath(path); } catch { return path; }
+        }
+    }
+}

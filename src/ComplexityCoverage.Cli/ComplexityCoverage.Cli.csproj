@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+
+    <!-- NuGet Package Settings -->
+    <PackageId>ComplexityCoverage</PackageId>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>complexity-coverage</ToolCommandName>
+    <Version>1.0.0</Version>
+    <Title>ComplexityCoverage</Title>
+    <Description>Calculate complexity-weighted test coverage for .NET projects. Weights code coverage by cyclomatic complexity, nesting depth, Halstead Volume, or Maintainability Index to emphasize testing of complex business logic.</Description>
+    <Authors>ComplexityCoverage Contributors</Authors>
+    <RepositoryUrl>https://github.com/ingdevfi/ComplexityCoverage.Net</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>complexity;coverage;testing;metrics;analysis;mccabe;halstead;maintainability</PackageTags>
+    <PackageProjectUrl>https://github.com/ingdevfi/ComplexityCoverage.Net</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ComplexityCoverage.Application\ComplexityCoverage.Application.csproj" />
+    <ProjectReference Include="..\ComplexityCoverage.Infrastructure\ComplexityCoverage.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

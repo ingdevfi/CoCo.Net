@@ -1,0 +1,24 @@
+<Solution>
+  <Folder Name="/doc/">
+    <File Path="doc/strategies/halstead.md" />
+    <File Path="doc/strategies/maintainability-index.md" />
+    <File Path="doc/strategies/mccabe.md" />
+    <File Path="doc/strategies/nesting.md" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+    <File Path="dotnet-tools.json" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/ComplexityCoverage.Application/ComplexityCoverage.Application.csproj" />
+    <Project Path="src/ComplexityCoverage.Cli/ComplexityCoverage.Cli.csproj" />
+    <Project Path="src/ComplexityCoverage.Domain/ComplexityCoverage.Domain.csproj" />
+    <Project Path="src/ComplexityCoverage.Infrastructure/ComplexityCoverage.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ComplexityCoverage.Domain.Tests/ComplexityCoverage.Domain.Tests.csproj" />
+    <Project Path="tests/ComplexityCoverage.Infrastructure.Tests/ComplexityCoverage.Infrastructure.Tests.csproj" />
+    <Project Path="tests/ComplexityCoverage.Integration.Tests/ComplexityCoverage.Integration.Tests.csproj" />
+  </Folder>
+</Solution>
