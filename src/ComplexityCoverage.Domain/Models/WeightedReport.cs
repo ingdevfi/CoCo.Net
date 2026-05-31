@@ -6,7 +6,8 @@ namespace ComplexityCoverage.Domain.Models
         IReadOnlyDictionary<string, double> OverallWeightedCoverageByStrategy,
         IReadOnlyList<FileWeightDetails> FileDetails,
         int TotalLines = 0,
-        TimeSpan? Duration = null);
+        TimeSpan? Duration = null,
+        IReadOnlyList<FileSourceDetails>? SourceDetails = null);
 
     public record FileWeightDetails(
         string FilePath, 

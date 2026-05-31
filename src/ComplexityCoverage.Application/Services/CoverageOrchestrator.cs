@@ -20,6 +20,8 @@ namespace ComplexityCoverage.Application.Services
         readonly ISourceFileDiscoveryService _fileDiscoveryService = fileDiscoveryService;
         readonly ILogger? _logger = logger;
 
+        public bool IncludeSourceDetails { get; set; } = false;
+
         static readonly Dictionary<string, double> EmptyStrategyDict = [];
 
         public async Task<CoverageResponse> RunCoverageAnalysisAsync(AnalysisConfig config, string outputPath)
@@ -41,14 +43,14 @@ namespace ComplexityCoverage.Application.Services
                     return new CoverageResponse(false, 0.0, EmptyStrategyDict, [], "No source files found");
 
                 var coverageMap = await RunTestsAsync(config);
-                var (fileResults, fileWeightDetails, overallWeightedByStrategy) = ProcessFiles(sourceFiles, coverageMap);
+                var (fileResults, fileWeightDetails, overallWeightedByStrategy, fileSourceDetails) = ProcessFiles(sourceFiles, coverageMap);
 
                 var totalLines = fileResults.Sum(f => f.TotalLines);
                 var totalCoveredLines = fileResults.Sum(f => f.CoveredLines);
                 var overallLineCoverage = totalLines > 0 ? (double)totalCoveredLines / totalLines * 100 : 0;
 
                 sw.Stop();
-                await GenerateReportAsync(outputPath, overallLineCoverage, overallWeightedByStrategy, fileWeightDetails, totalLines, sw.Elapsed);
+                await GenerateReportAsync(outputPath, overallLineCoverage, overallWeightedByStrategy, fileWeightDetails, totalLines, sw.Elapsed, fileSourceDetails);
 
                 _logger?.Information("Analysis completed successfully");
                 return new CoverageResponse(true, overallLineCoverage, overallWeightedByStrategy, fileResults, null);
@@ -112,11 +114,12 @@ namespace ComplexityCoverage.Application.Services
             return await _testRunner.RunTestsAsync(testTarget, timeout);
         }
 
-        (List<FileCoverageResult> FileResults, List<FileWeightDetails> WeightDetails, Dictionary<string, double> OverallByStrategy) ProcessFiles(
+        (List<FileCoverageResult> FileResults, List<FileWeightDetails> WeightDetails, Dictionary<string, double> OverallByStrategy, List<FileSourceDetails> SourceDetails) ProcessFiles(
             IEnumerable<SourceFile> sourceFiles, CoverageMap coverageMap)
         {
             var fileResultsBag = new ConcurrentBag<FileCoverageResult>();
             var fileWeightDetailsBag = new ConcurrentBag<FileWeightDetails>();
+            var fileSourceDetailsBag = new ConcurrentBag<FileSourceDetails>();
 
             // Pre-build normalized path lookup for O(1) matching instead of O(N) scan per file
             var normalizedCoverageMap = BuildNormalizedCoverageMap(coverageMap);
@@ -135,9 +138,11 @@ namespace ComplexityCoverage.Application.Services
 
             Parallel.ForEach(sourceFiles, parallelOptions, file =>
             {
-                var (result, weightDetails, strategyMetrics) = ProcessSingleFile(file, coverageMap, normalizedCoverageMap);
+                var (result, weightDetails, strategyMetrics, sourceDetails) = ProcessSingleFile(file, coverageMap, normalizedCoverageMap);
                 fileResultsBag.Add(result);
                 fileWeightDetailsBag.Add(weightDetails);
+                if (IncludeSourceDetails)
+                    fileSourceDetailsBag.Add(sourceDetails);
 
                 foreach (var (name, covered, total) in strategyMetrics)
                 {
@@ -152,10 +157,10 @@ namespace ComplexityCoverage.Application.Services
                     ? coveredWeightByStrategy[s.Name] / totalWeightByStrategy[s.Name] * 100
                     : 0.0);
 
-            return ([.. fileResultsBag], [.. fileWeightDetailsBag], overallByStrategy);
+            return ([.. fileResultsBag], [.. fileWeightDetailsBag], overallByStrategy, [.. fileSourceDetailsBag]);
         }
 
-        (FileCoverageResult Result, FileWeightDetails WeightDetails, List<(string Name, double Covered, double Total)> StrategyMetrics) ProcessSingleFile(
+        (FileCoverageResult Result, FileWeightDetails WeightDetails, List<(string Name, double Covered, double Total)> StrategyMetrics, FileSourceDetails SourceDetails) ProcessSingleFile(
             SourceFile file, CoverageMap coverageMap, Dictionary<string, IReadOnlyDictionary<int, bool>> normalizedCoverageMap)
         {
             // Fast path lookup using exact match then normalized map
@@ -183,16 +188,20 @@ namespace ComplexityCoverage.Application.Services
             // Calculate weighted coverage for each strategy
             var weightedByStrategy = new Dictionary<string, double>();
             var strategyMetrics = new List<(string Name, double Covered, double Total)>();
+            // Per-line weights keyed by strategy name (built once, reused for source details)
+            var lineWeightsByStrategy = new Dictionary<string, double[]>();
 
             foreach (var (name, strategy) in _strategies)
             {
                 var weights = strategy.CalculateWeights(file);
                 var fileCoveredWeight = 0.0;
                 var fileAllWeight = 0.0;
+                var lineWeights = new double[file.Lines.Count];
 
                 for (int i = 0; i < file.Lines.Count; i++)
                 {
                     var weight = weights[i];
+                    lineWeights[i] = weight;
                     fileAllWeight += weight;
                     if (lineCoverage != null
                         && lineCoverage.TryGetValue(file.Lines[i].LineNumber, out var isCovered) && isCovered)
@@ -204,18 +213,31 @@ namespace ComplexityCoverage.Application.Services
                 var weightedPct = fileAllWeight > 0 ? fileCoveredWeight / fileAllWeight * 100 : 0;
                 weightedByStrategy[name] = weightedPct;
                 strategyMetrics.Add((name, fileCoveredWeight, fileAllWeight));
+                lineWeightsByStrategy[name] = lineWeights;
+            }
+
+            var lineSourceDetails = new List<LineSourceDetail>(file.Lines.Count);
+            for (int i = 0; i < file.Lines.Count; i++)
+            {
+                var loc = file.Lines[i];
+                bool? isCoveredLine = lineCoverage != null && lineCoverage.TryGetValue(loc.LineNumber, out var cov) ? cov : null;
+                var lineWeights = _strategies.ToDictionary(
+                    s => s.Name,
+                    s => (lineWeightsByStrategy.TryGetValue(s.Name, out var arr) ? arr[i] : 0.0));
+                lineSourceDetails.Add(new LineSourceDetail(loc.LineNumber, loc.RawText, isCoveredLine, lineWeights));
             }
 
             var result = new FileCoverageResult(file.FilePath, lineCoveragePercentage, weightedByStrategy, coveredLines, file.Lines.Count);
             var weightDetails = new FileWeightDetails(file.FilePath, lineCoveragePercentage, weightedByStrategy);
+            var sourceDetails = new FileSourceDetails(file.FilePath, lineSourceDetails);
 
-            return (result, weightDetails, strategyMetrics);
+            return (result, weightDetails, strategyMetrics, sourceDetails);
         }
 
-        async Task GenerateReportAsync(string outputPath, double overallLineCoverage, Dictionary<string, double> overallWeightedByStrategy, List<FileWeightDetails> fileWeightDetails, int totalLines, TimeSpan duration)
+        async Task GenerateReportAsync(string outputPath, double overallLineCoverage, Dictionary<string, double> overallWeightedByStrategy, List<FileWeightDetails> fileWeightDetails, int totalLines, TimeSpan duration, List<FileSourceDetails> sourceDetails)
         {
             var strategyNames = _strategies.Select(s => s.Name).ToList();
-            var weightedReport = new WeightedReport(strategyNames, overallLineCoverage, overallWeightedByStrategy, fileWeightDetails, totalLines, duration);
+            var weightedReport = new WeightedReport(strategyNames, overallLineCoverage, overallWeightedByStrategy, fileWeightDetails, totalLines, duration, IncludeSourceDetails ? sourceDetails : null);
             _logger?.Information($"Generating report at: {outputPath}");
             await _reportGenerator.GenerateReportAsync(weightedReport, outputPath);
         }

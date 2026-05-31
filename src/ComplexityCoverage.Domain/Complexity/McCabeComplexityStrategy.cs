@@ -205,11 +205,11 @@ namespace ComplexityCoverage.Domain.Complexity
             var spans = new List<MethodSpan>();
             foreach (var method in root.DescendantNodes().OfType<MethodDeclarationSyntax>())
             {
-                var lineSpan = tree.GetLineSpan(method.FullSpan);
-                spans.Add(new MethodSpan(
-                    method,
-                    lineSpan.StartLinePosition.Line + 1,
-                    lineSpan.EndLinePosition.Line + 1));
+                // Use method.Span (not FullSpan) so leading trivia (XML doc comments) is excluded
+                // from the method range — those lines should not inherit the method's complexity.
+                var startLine = tree.GetLineSpan(method.Span).StartLinePosition.Line + 1;
+                var endLine = tree.GetLineSpan(method.Span).EndLinePosition.Line + 1;
+                spans.Add(new MethodSpan(method, startLine, endLine));
             }
             return spans;
         }

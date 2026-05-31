@@ -88,7 +88,8 @@ dotnet run --project src/ComplexityCoverage.Cli -- \
 **Arguments**:
 - `--solution, -s`: Path to `.sln` or `.slnx` solution file **(required)**
 - `--test-project, -t`: Path to a specific test `.csproj` file (optional — see [Test Project Auto-Detection](#test-project-auto-detection) below)
-- `--output, -o`: Output HTML report (default: `coverage-report.html`)
+- `--output, -o`: Output file path for HTML/ZIP report (default: `coverage-report.html`)
+- `--output-mode, -m`: Output mode — see [Output Modes](#output-modes) (default: `html`)
 - `--complexity, -c`: Strategy: `mccabe`, `nesting`, `halstead`, `mi`, or `all` (default: `mi`)
 - `--timeout`: Test execution timeout in minutes (default: 15)
 - `--coverage-file, -cf`: Path to an existing coverage file — skips running tests
@@ -100,6 +101,7 @@ dotnet run --project src/ComplexityCoverage.Cli -- \
 Starting complexity coverage analysis...
 Solution: /path/to/Solution.sln
 Test Target: all test projects in solution
+Output Mode: html
 Output: coverage-report.html
 Complexity Strategy: mi
 Timeout: 00:15:00
@@ -109,7 +111,7 @@ Running dotnet test...
 Analysis completed successfully!
 
 Overall Line Coverage: 82.15%
-Overall Weighted Coverage (mi): 87.34%
+Overall MI Coverage: 87.34%
 
 File Results:
 ────────────────────────────────────────────────────────────────────────────
@@ -123,6 +125,49 @@ File Results:
 
 Generated in: 4.2s | 42 files | 3,210 lines
 Report saved to: coverage-report.html
+```
+
+## Output Modes
+
+Use `--output-mode` (or `-m`) to choose how results are reported:
+
+| Mode | Alias | Files written | Description |
+|---|---|---|---|
+| `html` | — | `<output>.html` | **Default.** Console table + HTML summary report |
+| `console` | — | *(none)* | Console table only — no file written |
+| `zip` | — | `<output>.html` + `<output>.zip` | Console + HTML summary + ZIP archive with one annotated HTML per source file |
+
+### `html` mode (default)
+
+```bash
+# Equivalent — both produce the HTML summary report
+complexity-coverage --solution Solution.sln
+complexity-coverage --solution Solution.sln --output-mode html --output report.html
+```
+
+### `console` mode
+
+Console table only. Useful for CI pipelines where you only want the exit code and metrics in the log.
+
+```bash
+complexity-coverage --solution Solution.sln --output-mode console
+```
+
+### `zip` mode
+
+Generates:
+1. **`<output>.html`** — the same HTML summary as `html` mode
+2. **`<output>.zip`** — one HTML file per source file, each showing:
+   - Coverage status per line (green = covered, red = uncovered)
+   - Complexity weight per line for each active strategy shown in the margin
+   - Summary cards (line coverage + weighted coverage per strategy) at the top
+
+```bash
+complexity-coverage \
+  --solution Solution.sln \
+  --output-mode zip \
+  --output report.html
+# Writes: report.html  +  report.zip
 ```
 
 ## Test Project Auto-Detection
@@ -295,6 +340,15 @@ Generated report includes:
 - Footer with file count, total lines, and generation time
 - Blue-themed styling (neutral, does not imply coverage quality)
 
+### ZIP Report (annotated per-file HTML)
+
+When using `--output-mode zip`, the archive contains one dark-themed HTML file per source file:
+- **Green rows** — lines covered by tests
+- **Red rows** — lines not covered
+- **Grey rows** — lines with no coverage data (e.g., blank lines, comments)
+- **Complexity margin** — each active strategy's weight is shown next to the line number
+- **Summary cards** at the top display line coverage and weighted coverage for the file
+
 ### Interpretation
 
 **Example Scenarios**:
@@ -341,5 +395,5 @@ dotnet add package Coverlet.Collector
 [LICENSE](LICENSE)
 
 ---
-**Version**: 2.0  
+**Version**: 3.0  
 **Last Updated**: 2025

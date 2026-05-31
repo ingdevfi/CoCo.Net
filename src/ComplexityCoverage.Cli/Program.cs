@@ -29,10 +29,17 @@ namespace ComplexityCoverage.Cli
             var timeoutStr = GetArgument(args, "--timeout", null) ?? "15";
             var coverageFilePath = GetArgument(args, "--coverage-file", "-cf");
             var coverageFormat = GetArgument(args, "--coverage-format", null);
+            var outputMode = (GetArgument(args, "--output-mode", "-m") ?? "html").ToLowerInvariant();
 
             if (string.IsNullOrEmpty(solutionPath))
             {
                 await Console.Error.WriteLineAsync("Error: --solution (-s) is required");
+                return 1;
+            }
+
+            if (!new[] { "console", "html", "zip" }.Contains(outputMode))
+            {
+                await Console.Error.WriteLineAsync("Error: --output-mode must be one of: console, html, zip");
                 return 1;
             }
 
@@ -48,20 +55,27 @@ namespace ComplexityCoverage.Cli
 
             var coverageProvider = new CoberturaCoverageParser();
             var testRunner = new DotnetTestRunner(coverageProvider);
-            var reportGenerator = new HtmlReportGenerator();
+            IReportGenerator reportGenerator = outputMode switch
+            {
+                "console" => new NullReportGenerator(),
+                "zip" => new ZipReportGenerator(),
+                _ => new HtmlReportGenerator()
+            };
             var fileDiscoveryService = new SourceFileDiscoveryService();
             var orchestrator = new CoverageOrchestrator(testRunner, strategies, reportGenerator, fileDiscoveryService);
+            if (outputMode == "zip")
+                orchestrator.IncludeSourceDetails = true;
 
             var config = new AnalysisConfig(solutionPath, testProjectPath, coverageFilePath, coverageFormat, timeout);
 
-            await PrintStartInfoAsync(config, outputPath, complexityStrategy, timeout);
+            await PrintStartInfoAsync(config, outputPath, complexityStrategy, timeout, outputMode);
 
             try
             {
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 var response = await orchestrator.RunCoverageAnalysisAsync(config, outputPath);
                 stopwatch.Stop();
-                await PrintResponseAsync(response, outputPath, stopwatch.Elapsed);
+                await PrintResponseAsync(response, outputPath, stopwatch.Elapsed, outputMode);
                 return response.Success ? 0 : 1;
             }
             catch (Exception ex)
@@ -108,6 +122,10 @@ namespace ComplexityCoverage.Cli
             await Console.Out.WriteLineAsync("Options:");
             await Console.Out.WriteLineAsync("  -t, --test-project <path>   Path to a specific test project (default: all test projects in the solution)");
             await Console.Out.WriteLineAsync("  -o, --output <path>         Output report path (default: coverage-report.html)");
+            await Console.Out.WriteLineAsync("  -m, --output-mode <mode>    Output mode: console | html | zip (default: html)");
+            await Console.Out.WriteLineAsync("                               console  Console table only, no file written");
+            await Console.Out.WriteLineAsync("                               html     Console + HTML summary report (default)");
+            await Console.Out.WriteLineAsync("                               zip      Console + HTML summary + ZIP with annotated per-file HTML");
             await Console.Out.WriteLineAsync("  -c, --complexity <strategy>  Complexity strategy: mccabe, nesting, halstead, mi, all (default: mi)");
             await Console.Out.WriteLineAsync("                               Comma-separated for multiple: mccabe,halstead");
             await Console.Out.WriteLineAsync("      --timeout <minutes>     Test execution timeout in minutes (default: 15)");
@@ -121,62 +139,85 @@ namespace ComplexityCoverage.Cli
             await Console.Out.WriteLineAsync("  Coverage results from multiple test projects are merged.");
         }
 
-        private static async Task PrintStartInfoAsync(AnalysisConfig config, string outputPath, string complexityStrategy, TimeSpan timeout)
+        private static async Task PrintStartInfoAsync(AnalysisConfig config, string outputPath, string complexityStrategy, TimeSpan timeout, string outputMode)
         {
             await Console.Out.WriteLineAsync("Starting complexity coverage analysis...");
             await Console.Out.WriteLineAsync($"Solution: {config.SolutionPath}");
             await Console.Out.WriteLineAsync($"Test Target: {config.TestProjectPath ?? "all test projects in solution"}");
-            await Console.Out.WriteLineAsync($"Output: {outputPath}");
+            await Console.Out.WriteLineAsync($"Output Mode: {outputMode}");
+            if (outputMode != "console")
+                await Console.Out.WriteLineAsync($"Output: {outputPath}");
             await Console.Out.WriteLineAsync($"Complexity Strategy: {complexityStrategy}");
             await Console.Out.WriteLineAsync($"Timeout: {timeout}");
             await Console.Out.WriteLineAsync();
         }
 
-        private static async Task PrintResponseAsync(CoverageResponse response, string outputPath, TimeSpan elapsed)
+        private static async Task PrintResponseAsync(CoverageResponse response, string outputPath, TimeSpan elapsed, string outputMode)
         {
-            if (response.Success)
-            {
-                await Console.Out.WriteLineAsync("Analysis completed successfully!");
-                await Console.Out.WriteLineAsync($"Duration: {elapsed.TotalSeconds:F1}s");
-                await Console.Out.WriteLineAsync($"Overall Line Coverage: {response.OverallLineCoveragePercentage:F2}%");
-                foreach (var (strategy, pct) in response.OverallWeightedCoverageByStrategy)
-                {
-                    await Console.Out.WriteLineAsync($"Overall {strategy} Coverage: {pct:F2}%");
-                }
-                await Console.Out.WriteLineAsync();
-
-                if (response.FileResults.Any())
-                {
-                    var strategyNames = response.OverallWeightedCoverageByStrategy.Keys.ToList();
-                    // Build header
-                    var header = $"  {"File",-50} {"Line",8}";
-                    foreach (var name in strategyNames)
-                        header += $" {name,10}";
-
-                    var lineWidth = header.Length + 2;
-                    await Console.Out.WriteLineAsync("File Results:");
-                    await Console.Out.WriteLineAsync(new string('-', lineWidth));
-                    await Console.Out.WriteLineAsync(header);
-                    await Console.Out.WriteLineAsync(new string('-', lineWidth));
-
-                    foreach (var f in response.FileResults)
-                    {
-                        var fileName = Path.GetFileName(f.FilePath);
-                        var line = $"  {fileName,-50} {f.CoveragePercentage,7:F2}%";
-                        foreach (var name in strategyNames)
-                            line += $" {f.WeightedCoverageByStrategy.GetValueOrDefault(name),9:F2}%";
-                        await Console.Out.WriteLineAsync(line);
-                    }
-                    await Console.Out.WriteLineAsync(new string('-', lineWidth));
-                }
-
-                await Console.Out.WriteLineAsync();
-                await Console.Out.WriteLineAsync($"Report saved to: {outputPath}");
-            }
-            else
+            if (!response.Success)
             {
                 await Console.Error.WriteLineAsync($"Analysis failed: {response.ErrorMessage}");
+                return;
             }
+
+            await PrintSummaryAsync(response, elapsed);
+            await PrintFileTableAsync(response);
+            await PrintOutputPathsAsync(outputPath, outputMode);
+        }
+
+        private static async Task PrintSummaryAsync(CoverageResponse response, TimeSpan elapsed)
+        {
+            await Console.Out.WriteLineAsync("Analysis completed successfully!");
+            await Console.Out.WriteLineAsync($"Duration: {elapsed.TotalSeconds:F1}s");
+            await Console.Out.WriteLineAsync($"Overall Line Coverage: {response.OverallLineCoveragePercentage:F2}%");
+            foreach (var (strategy, pct) in response.OverallWeightedCoverageByStrategy)
+                await Console.Out.WriteLineAsync($"Overall {strategy} Coverage: {pct:F2}%");
+            await Console.Out.WriteLineAsync();
+        }
+
+        private static async Task PrintFileTableAsync(CoverageResponse response)
+        {
+            if (!response.FileResults.Any())
+                return;
+
+            var strategyNames = response.OverallWeightedCoverageByStrategy.Keys.ToList();
+            var header = BuildTableHeader(strategyNames);
+            var lineWidth = header.Length + 2;
+
+            await Console.Out.WriteLineAsync("File Results:");
+            await Console.Out.WriteLineAsync(new string('-', lineWidth));
+            await Console.Out.WriteLineAsync(header);
+            await Console.Out.WriteLineAsync(new string('-', lineWidth));
+
+            foreach (var f in response.FileResults)
+                await Console.Out.WriteLineAsync(BuildTableRow(f, strategyNames));
+
+            await Console.Out.WriteLineAsync(new string('-', lineWidth));
+            await Console.Out.WriteLineAsync();
+        }
+
+        private static string BuildTableHeader(List<string> strategyNames)
+        {
+            var sb = new System.Text.StringBuilder($"  {"File",-50} {"Line",8}");
+            foreach (var name in strategyNames)
+                sb.Append($" {name,10}");
+            return sb.ToString();
+        }
+
+        private static string BuildTableRow(FileCoverageResult f, List<string> strategyNames)
+        {
+            var sb = new System.Text.StringBuilder($"  {Path.GetFileName(f.FilePath),-50} {f.CoveragePercentage,7:F2}%");
+            foreach (var name in strategyNames)
+                sb.Append($" {f.WeightedCoverageByStrategy.GetValueOrDefault(name),9:F2}%");
+            return sb.ToString();
+        }
+
+        private static async Task PrintOutputPathsAsync(string outputPath, string outputMode)
+        {
+            if (outputMode == "html" || outputMode == "zip")
+                await Console.Out.WriteLineAsync($"Report saved to: {outputPath}");
+            if (outputMode == "zip")
+                await Console.Out.WriteLineAsync($"ZIP archive saved to: {Path.ChangeExtension(outputPath, ".zip")}");
         }
 
         private static string? GetArgument(string[] args, string longName, string? shortName)

@@ -28,7 +28,7 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             sb.AppendLine(".card-strategy { background-color: #1976D2; }");
             sb.AppendLine("table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }");
             sb.AppendLine("th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }");
-            sb.AppendLine("th { background-color: #1976D2; color: white; }");
+            sb.AppendLine("th { background-color: #1976D2; color: white; position: sticky; top: 0; z-index: 1; }");
             sb.AppendLine("tr:nth-child(even) { background-color: #f2f2f2; }");
             sb.AppendLine(".num { text-align: right; }");
             sb.AppendLine("</style>");
@@ -45,10 +45,11 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             sb.AppendLine("</div>");
             sb.AppendLine("<h2>File Details</h2>");
             sb.AppendLine("<table>");
-            sb.Append("<tr><th>File</th><th class=\"num\">Line Coverage</th>");
+            sb.Append("<thead><tr><th>File</th><th class=\"num\">Line Coverage</th>");
             foreach (var name in report.StrategyNames)
                 sb.Append($"<th class=\"num\">{name}</th>");
-            sb.AppendLine("</tr>");
+            sb.AppendLine("</tr></thead>");
+            sb.AppendLine("<tbody>");
 
             foreach (var detail in report.FileDetails)
             {
@@ -62,6 +63,7 @@ namespace ComplexityCoverage.Infrastructure.Reporting
                 sb.AppendLine("</tr>");
             }
 
+            sb.AppendLine("</tbody>");
             sb.AppendLine("</table>");
             sb.AppendLine("<hr/>");
             var totalFiles = report.FileDetails.Count;
