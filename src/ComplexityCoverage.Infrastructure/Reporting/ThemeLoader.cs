@@ -30,11 +30,15 @@ namespace ComplexityCoverage.Infrastructure.Reporting
         public static ThemeDefinition Load(string? themePathOrName = null)
         {
             if (string.IsNullOrWhiteSpace(themePathOrName))
+            {
                 return ThemeDefinition.DarkMonokai;
+            }
 
             // 1. Absolute or relative file path
             if (File.Exists(themePathOrName))
+            {
                 return LoadFile(themePathOrName) ?? ThemeDefinition.DarkMonokai;
+            }
 
             // 2. themes/<name>.json next to the executable
             var exeDir = Path.GetDirectoryName(Environment.ProcessPath ?? string.Empty) ?? Directory.GetCurrentDirectory();
@@ -43,7 +47,9 @@ namespace ComplexityCoverage.Infrastructure.Reporting
                 : themePathOrName + ".json");
 
             if (File.Exists(candidate))
+            {
                 return LoadFile(candidate) ?? ThemeDefinition.DarkMonokai;
+            }
 
             // 3. Built-in names
             return themePathOrName.ToLowerInvariant() switch

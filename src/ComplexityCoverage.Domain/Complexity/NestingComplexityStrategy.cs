@@ -57,7 +57,10 @@ namespace ComplexityCoverage.Domain.Complexity
             foreach (var node in root.DescendantNodes())
             {
                 int contribution = GetNestingWeight(node);
-                if (contribution == 0) continue;
+                if (contribution == 0)
+                {
+                    continue;
+                }
 
                 // Get the line span of the node's body/block
                 var lineSpan = tree.GetLineSpan(node.Span);
@@ -68,9 +71,13 @@ namespace ComplexityCoverage.Domain.Complexity
                 for (int line = startLine; line <= endLine; line++)
                 {
                     if (!lineWeights.TryGetValue(line, out var current))
+                    {
                         lineWeights[line] = 1.0 + contribution;
+                    }
                     else
+                    {
                         lineWeights[line] = current + contribution;
+                    }
                 }
             }
 

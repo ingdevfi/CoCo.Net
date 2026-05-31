@@ -2,7 +2,7 @@
   "profiles": {
     "ComplexityCoverage.Cli": {
       "commandName": "Project",
-      "commandLineArgs": "--solution \"..\\..\\..\\..\\..\\..\\ComplexityCoverage.slnx\" --output coverage-report.html --complexity all --timeout 15 -m zip -theme dark-monokai"
+      "commandLineArgs": "--solution \"..\\..\\..\\..\\..\\ComplexityCoverage.slnx\" --output coverage-report.html --complexity all --timeout 15 -m zip --theme dark-monokai"
     }
   }
 }

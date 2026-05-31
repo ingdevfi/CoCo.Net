@@ -32,7 +32,9 @@ public class DotnetTestRunnerTests
         finally
         {
             if (File.Exists(tempPath))
+            {
                 File.Delete(tempPath);
+            }
         }
     }
 
@@ -54,7 +56,10 @@ public class DotnetTestRunnerTests
         while (dir != null)
         {
             if (dir.GetFiles(".gitconfig").Length > 0 || dir.GetDirectories(".git").Length > 0)
+            {
                 return dir.FullName;
+            }
+
             dir = dir.Parent;
         }
         throw new InvalidOperationException("Could not find repository root");

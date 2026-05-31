@@ -134,7 +134,10 @@ namespace ComplexityCoverage.Domain.Complexity
                     case ForStatementSyntax forStmt:
                         decisionPoints++;
                         if (forStmt.Condition != null)
+                        {
                             decisionPoints += CountLogicalOperators(forStmt.Condition);
+                        }
+
                         break;
 
                     case ForEachStatementSyntax:
@@ -171,7 +174,9 @@ namespace ComplexityCoverage.Domain.Complexity
         private static new int CountLogicalOperators(ExpressionSyntax? expression)
         {
             if (expression == null)
+            {
                 return 0;
+            }
 
             var nodes = expression.DescendantNodes().ToList();
             nodes.Add(expression);

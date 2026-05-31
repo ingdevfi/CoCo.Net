@@ -32,14 +32,18 @@ namespace ComplexityCoverage.Infrastructure.Coverage
             var ext = Path.GetExtension(filePath).ToLowerInvariant();
 
             if (ext == ".trx")
+            {
                 throw new NotSupportedException(
                     "TRX files are not supported as a coverage source. " +
                     "TRX files contain only test pass/fail results with no line-level coverage data. " +
                     "Use a Cobertura or OpenCover file instead.");
+            }
 
             // Both Cobertura and OpenCover use .xml — peek at root element
             if (ext == ".xml")
+            {
                 return PeekXmlFormat(filePath);
+            }
 
             return "cobertura";
         }
@@ -52,7 +56,9 @@ namespace ComplexityCoverage.Infrastructure.Coverage
                 while (reader.Read())
                 {
                     if (reader.NodeType != System.Xml.XmlNodeType.Element)
+                    {
                         continue;
+                    }
 
                     return reader.LocalName.ToLowerInvariant() switch
                     {

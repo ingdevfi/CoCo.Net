@@ -18,7 +18,9 @@ namespace ComplexityCoverage.Infrastructure.Coverage
 
             var root = doc.Root;
             if (root == null)
+            {
                 return new CoverageMap(new Dictionary<string, IReadOnlyDictionary<int, bool>>());
+            }
 
             var fileIndex = BuildFileIndex(root);
             var fileCoverage = BuildFileCoverage(root, fileIndex);
@@ -45,7 +47,9 @@ namespace ComplexityCoverage.Infrastructure.Coverage
             foreach (var sp in root.Descendants("SequencePoint"))
             {
                 if (!TryParseSequencePoint(sp, fileIndex, out var filePath, out var lineNumber, out var isCovered))
+                {
                     continue;
+                }
 
                 if (!fileCoverage.TryGetValue(filePath!, out var lines))
                 {
@@ -78,16 +82,24 @@ namespace ComplexityCoverage.Infrastructure.Coverage
             var vcAttr = sp.Attribute("vc")?.Value;
 
             if (fileId == null || slAttr == null || vcAttr == null)
+            {
                 return false;
+            }
 
             if (!fileIndex.TryGetValue(fileId, out filePath))
+            {
                 return false;
+            }
 
             if (!int.TryParse(slAttr, out lineNumber))
+            {
                 return false;
+            }
 
             if (!int.TryParse(vcAttr, out var visitCount))
+            {
                 return false;
+            }
 
             isCovered = visitCount > 0;
             return true;

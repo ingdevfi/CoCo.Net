@@ -27,7 +27,9 @@ namespace ComplexityCoverage.Cli.Config
         {
             var resolved = Resolve(path);
             if (resolved is null)
+            {
                 return null;
+            }
 
             try
             {
@@ -59,7 +61,9 @@ namespace ComplexityCoverage.Cli.Config
                     string.Equals(kv.Key, key, StringComparison.OrdinalIgnoreCase));
 
                 if (match.Key is not null)
+                {
                     node[match.Key] = JsonValue.Create(value);
+                }
             }
 
             var merged = node.ToJsonString();
@@ -71,7 +75,10 @@ namespace ComplexityCoverage.Cli.Config
             if (!string.IsNullOrEmpty(path))
             {
                 if (!File.Exists(path))
+                {
                     Console.Error.WriteLine($"Warning: config file '{path}' not found — ignoring.");
+                }
+
                 return File.Exists(path) ? path : null;
             }
 

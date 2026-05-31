@@ -59,7 +59,10 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             sb.AppendLine("<table>");
             sb.Append("<thead><tr><th>File</th><th class=\"num\">Line Coverage</th>");
             foreach (var name in report.StrategyNames)
+            {
                 sb.Append($"<th class=\"num\">{name}</th>");
+            }
+
             sb.AppendLine("</tr></thead>");
             sb.AppendLine("<tbody>");
 
@@ -81,7 +84,10 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             var totalFiles = report.FileDetails.Count;
             sb.Append($"<p style=\"color:{t.GutterFg};font-size:0.9em;\">{totalFiles} files &middot; {report.TotalLines} lines");
             if (report.Duration.HasValue)
+            {
                 sb.Append($" &middot; Generated in {report.Duration.Value.TotalSeconds:F1}s");
+            }
+
             sb.AppendLine("</p>");
             sb.AppendLine("</body>");
             sb.AppendLine("</html>");

@@ -41,9 +41,15 @@ namespace ComplexityCoverage.Infrastructure.Services
                 foreach (var file in Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories))
                 {
                     if (!extensionSet.Contains(Path.GetExtension(file)))
+                    {
                         continue;
+                    }
+
                     if (IsExcluded(directory, file))
+                    {
                         continue;
+                    }
+
                     filePaths.Add(file);
                 }
             }

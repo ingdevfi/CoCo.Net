@@ -63,7 +63,9 @@ namespace ComplexityCoverage.Cli
             // ── Theme + overrides ──────────────────────────────────────────────
             var theme = ThemeLoader.Load(themeNameArg);
             if (cfg?.ThemeOverrides is { Count: > 0 } overrides)
+            {
                 theme = ConfigLoader.ApplyOverrides(theme, overrides);
+            }
 
             // ── Strategies, runner, generator ─────────────────────────────────
             var strategies = CreateStrategies(complexityArg);
@@ -80,7 +82,9 @@ namespace ComplexityCoverage.Cli
             var fileDiscoveryService = new SourceFileDiscoveryService();
             var orchestrator = new CoverageOrchestrator(testRunner, strategies, reportGenerator, fileDiscoveryService);
             if (needsZip)
+            {
                 orchestrator.IncludeSourceDetails = true;
+            }
 
             var config = new AnalysisConfig(solutionPath, testProjectArg, coverageFileArg, coverageFormatArg, timeout);
 
@@ -107,7 +111,9 @@ namespace ComplexityCoverage.Cli
             var keys = input.ToLowerInvariant().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
             if (keys.Contains("all"))
+            {
                 keys = ["mccabe", "nesting", "halstead", "mi"];
+            }
 
             var result = new List<(string, IComplexityStrategy)>();
             foreach (var key in keys)
@@ -120,7 +126,9 @@ namespace ComplexityCoverage.Cli
                     _ => ("McCabe", new McCabeComplexityStrategy())
                 };
                 if (!result.Any(r => r.Item1 == name))
+                {
                     result.Add((name, strategy));
+                }
             }
             return result;
         }
@@ -166,7 +174,10 @@ namespace ComplexityCoverage.Cli
             await Console.Out.WriteLineAsync($"Test Target: {config.TestProjectPath ?? "all test projects in solution"}");
             await Console.Out.WriteLineAsync($"Output Mode: {outputMode}");
             if (outputMode != "console")
+            {
                 await Console.Out.WriteLineAsync($"Output: {outputPath}");
+            }
+
             await Console.Out.WriteLineAsync($"Theme: {themeName}");
             await Console.Out.WriteLineAsync($"Complexity Strategy: {complexityStrategy}");
             await Console.Out.WriteLineAsync($"Timeout: {timeout}");
@@ -196,14 +207,19 @@ namespace ComplexityCoverage.Cli
             await Console.Out.WriteLineAsync($"Duration: {elapsed.TotalSeconds:F1}s");
             await Console.Out.WriteLineAsync($"Overall Line Coverage: {response.OverallLineCoveragePercentage:F2}%");
             foreach (var (strategy, pct) in response.OverallWeightedCoverageByStrategy)
+            {
                 await Console.Out.WriteLineAsync($"Overall {strategy} Coverage: {pct:F2}%");
+            }
+
             await Console.Out.WriteLineAsync();
         }
 
         private static async Task PrintFileTableAsync(CoverageResponse response)
         {
             if (!response.FileResults.Any())
+            {
                 return;
+            }
 
             var strategyNames = response.OverallWeightedCoverageByStrategy.Keys.ToList();
             var header = BuildTableHeader(strategyNames);
@@ -215,7 +231,9 @@ namespace ComplexityCoverage.Cli
             await Console.Out.WriteLineAsync(new string('-', lineWidth));
 
             foreach (var f in response.FileResults)
+            {
                 await Console.Out.WriteLineAsync(BuildTableRow(f, strategyNames));
+            }
 
             await Console.Out.WriteLineAsync(new string('-', lineWidth));
             await Console.Out.WriteLineAsync();
@@ -225,7 +243,10 @@ namespace ComplexityCoverage.Cli
         {
             var sb = new System.Text.StringBuilder($"  {"File",-50} {"Line",8}");
             foreach (var name in strategyNames)
+            {
                 sb.Append($" {name,10}");
+            }
+
             return sb.ToString();
         }
 
@@ -233,16 +254,24 @@ namespace ComplexityCoverage.Cli
         {
             var sb = new System.Text.StringBuilder($"  {Path.GetFileName(f.FilePath),-50} {f.CoveragePercentage,7:F2}%");
             foreach (var name in strategyNames)
+            {
                 sb.Append($" {f.WeightedCoverageByStrategy.GetValueOrDefault(name),9:F2}%");
+            }
+
             return sb.ToString();
         }
 
         private static async Task PrintOutputPathsAsync(string outputPath, string outputMode)
         {
             if (outputMode == "html")
+            {
                 await Console.Out.WriteLineAsync($"Report saved to: {outputPath}");
+            }
+
             if (outputMode is "zip" or "zip+console")
+            {
                 await Console.Out.WriteLineAsync($"ZIP archive saved to: {Path.ChangeExtension(outputPath, ".zip")}");
+            }
         }
 
         private static string? GetArgument(string[] args, string longName, string? shortName)

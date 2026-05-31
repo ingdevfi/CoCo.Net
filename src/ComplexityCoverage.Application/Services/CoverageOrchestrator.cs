@@ -32,7 +32,9 @@ namespace ComplexityCoverage.Application.Services
 
                 var validationError = ValidateConfig(config);
                 if (validationError is not null)
+                {
                     return validationError;
+                }
 
                 var solutionDir = Path.GetDirectoryName(config.SolutionPath)
                     ?? Path.GetPathRoot(config.SolutionPath)
@@ -40,7 +42,9 @@ namespace ComplexityCoverage.Application.Services
 
                 var sourceFiles = await DiscoverFilesAsync(solutionDir);
                 if (sourceFiles is null)
+                {
                     return new CoverageResponse(false, 0.0, EmptyStrategyDict, [], "No source files found");
+                }
 
                 var coverageMap = await RunTestsAsync(config);
                 var (fileResults, fileWeightDetails, overallWeightedByStrategy, fileSourceDetails) = ProcessFiles(sourceFiles, coverageMap);
@@ -142,7 +146,9 @@ namespace ComplexityCoverage.Application.Services
                 fileResultsBag.Add(result);
                 fileWeightDetailsBag.Add(weightDetails);
                 if (IncludeSourceDetails)
+                {
                     fileSourceDetailsBag.Add(sourceDetails);
+                }
 
                 foreach (var (name, covered, total) in strategyMetrics)
                 {
@@ -172,17 +178,21 @@ namespace ComplexityCoverage.Application.Services
             }
 
             var coveredLines = 0;
+            var coverableLines = 0; // lines Coverlet actually tracked (excludes blanks, comments, braces)
             if (lineCoverage != null)
             {
+                coverableLines = lineCoverage.Count;
                 foreach (var line in file.Lines)
                 {
                     if (lineCoverage.TryGetValue(line.LineNumber, out var isCovered) && isCovered)
+                    {
                         coveredLines++;
+                    }
                 }
             }
 
-            var lineCoveragePercentage = file.Lines.Count > 0
-                ? (double)coveredLines / file.Lines.Count * 100
+            var lineCoveragePercentage = coverableLines > 0
+                ? (double)coveredLines / coverableLines * 100
                 : 0;
 
             // Calculate weighted coverage for each strategy
@@ -227,7 +237,7 @@ namespace ComplexityCoverage.Application.Services
                 lineSourceDetails.Add(new LineSourceDetail(loc.LineNumber, loc.RawText, isCoveredLine, lineWeights));
             }
 
-            var result = new FileCoverageResult(file.FilePath, lineCoveragePercentage, weightedByStrategy, coveredLines, file.Lines.Count);
+            var result = new FileCoverageResult(file.FilePath, lineCoveragePercentage, weightedByStrategy, coveredLines, coverableLines);
             var weightDetails = new FileWeightDetails(file.FilePath, lineCoveragePercentage, weightedByStrategy);
             var sourceDetails = new FileSourceDetails(file.FilePath, lineSourceDetails);
 

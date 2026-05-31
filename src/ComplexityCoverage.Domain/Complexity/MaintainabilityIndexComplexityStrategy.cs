@@ -65,7 +65,9 @@ namespace ComplexityCoverage.Domain.Complexity
         {
             var containingMethod = FindMethodContainingLine(lineNumber, root, tree);
             if (containingMethod == null)
+            {
                 return 0.0;
+            }
 
             var miCache = _methodMICache.GetOrAdd(tree, _ => []);
             if (!miCache.TryGetValue(containingMethod, out var mi))
@@ -80,7 +82,10 @@ namespace ComplexityCoverage.Domain.Complexity
         private double ComputeMethodMI(MethodDeclarationSyntax method, SyntaxNode root, SyntaxTree tree)
         {
             var methodLines = GetMethodLines(method, tree);
-            if (methodLines.Count == 0) return 50.0;
+            if (methodLines.Count == 0)
+            {
+                return 50.0;
+            }
 
             // Build a shared SourceFile with full content for cache-friendly strategy calls
             var content = root.SyntaxTree.GetText().ToString();
@@ -134,13 +139,18 @@ namespace ComplexityCoverage.Domain.Complexity
 
                 // Skip empty lines
                 if (string.IsNullOrEmpty(trimmed))
+                {
                     continue;
+                }
 
                 // Handle multiline comments
                 if (inMultilineComment)
                 {
                     if (trimmed.Contains("*/"))
+                    {
                         inMultilineComment = false;
+                    }
+
                     continue;
                 }
 
@@ -148,13 +158,18 @@ namespace ComplexityCoverage.Domain.Complexity
                 if (trimmed.StartsWith("/*"))
                 {
                     if (!trimmed.Contains("*/"))
+                    {
                         inMultilineComment = true;
+                    }
+
                     continue;
                 }
 
                 // Skip single-line comments
                 if (trimmed.StartsWith("//"))
+                {
                     continue;
+                }
 
                 slocCount++;
             }

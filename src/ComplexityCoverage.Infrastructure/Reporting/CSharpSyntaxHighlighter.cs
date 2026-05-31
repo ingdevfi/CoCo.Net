@@ -41,13 +41,19 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             foreach (var token in root.DescendantTokens(descendIntoTrivia: false))
             {
                 foreach (var trivia in token.LeadingTrivia)
+                {
                     segments.Add(TriviaSegment(trivia, tree, theme));
+                }
 
                 if (token.Span.Length > 0)
+                {
                     segments.Add(TokenSegment(token, tree, theme));
+                }
 
                 foreach (var trivia in token.TrailingTrivia)
+                {
                     segments.Add(TriviaSegment(trivia, tree, theme));
+                }
             }
 
             var lineBuilders = new Dictionary<int, StringBuilder>();
@@ -59,7 +65,10 @@ namespace ComplexityCoverage.Infrastructure.Reporting
                 {
                     var lineNo = startLine + i;
                     if (!lineBuilders.TryGetValue(lineNo, out var lb))
+                    {
                         lineBuilders[lineNo] = lb = new StringBuilder();
+                    }
+
                     lb.Append(parts[i]);
                 }
             }
@@ -120,10 +129,14 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             var kind = token.Kind();
 
             if (ControlFlowKinds.Contains(kind))
+            {
                 return theme.SyntaxControlFlow;
+            }
 
             if (SyntaxFacts.IsKeywordKind(kind) || SyntaxFacts.IsReservedKeyword(kind))
+            {
                 return theme.SyntaxKeyword;
+            }
 
             return kind switch
             {
@@ -156,10 +169,16 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             var sb = new StringBuilder();
             for (int i = 0; i < lines.Length; i++)
             {
-                if (i > 0) sb.Append('\n');
+                if (i > 0)
+                {
+                    sb.Append('\n');
+                }
+
                 var fragment = lines[i];
                 if (fragment.Length > 0)
+                {
                     sb.Append($"<span style=\"color:{colour}\">{HtmlEncode(fragment)}</span>");
+                }
             }
             return sb.ToString();
         }

@@ -29,7 +29,9 @@ public class HtmlReportGeneratorTests
         finally
         {
             if (File.Exists(tempPath))
+            {
                 File.Delete(tempPath);
+            }
         }
     }
 
@@ -51,7 +53,9 @@ public class HtmlReportGeneratorTests
         finally
         {
             if (File.Exists(tempPath))
+            {
                 File.Delete(tempPath);
+            }
         }
     }
 
@@ -73,7 +77,9 @@ public class HtmlReportGeneratorTests
         finally
         {
             if (File.Exists(tempPath))
+            {
                 File.Delete(tempPath);
+            }
         }
     }
 

@@ -76,9 +76,13 @@ namespace ComplexityCoverage.Domain.Complexity
                 int lineNumber = tree.GetLineSpan(token.Span).StartLinePosition.Line + 1;
 
                 if (IsOperator(token))
+                {
                     ClassifyToken(token, lineNumber, operatorsByLine, operatorCountByLine);
+                }
                 else if (IsOperand(token))
+                {
                     ClassifyToken(token, lineNumber, operandsByLine, operandCountByLine);
+                }
             }
 
             var map = new Dictionary<int, double>();
@@ -109,7 +113,9 @@ namespace ComplexityCoverage.Domain.Complexity
             int N = totalOperators + totalOperands;
 
             if (N <= 0)
+            {
                 return 0;
+            }
 
             int uniqueOperators = operatorsByLine.TryGetValue(line, out var ops) ? ops.Count : 0;
             int uniqueOperands = operandsByLine.TryGetValue(line, out var opds) ? opds.Count : 0;

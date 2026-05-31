@@ -28,7 +28,9 @@ public class CoberturaCoverageParserTests
         finally
         {
             if (File.Exists(tempPath))
+            {
                 File.Delete(tempPath);
+            }
         }
     }
 
@@ -49,7 +51,9 @@ public class CoberturaCoverageParserTests
         finally
         {
             if (File.Exists(tempPath))
+            {
                 File.Delete(tempPath);
+            }
         }
     }
 
@@ -75,7 +79,9 @@ public class CoberturaCoverageParserTests
         finally
         {
             if (File.Exists(tempPath))
+            {
                 File.Delete(tempPath);
+            }
         }
     }
 

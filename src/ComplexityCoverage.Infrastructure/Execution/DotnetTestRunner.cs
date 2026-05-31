@@ -47,7 +47,7 @@ namespace ComplexityCoverage.Infrastructure.Execution
                 var processStartInfo = new ProcessStartInfo
                 {
                     FileName = "dotnet",
-                    Arguments = $"test \"{projectPath}\" --no-restore --verbosity quiet --collect:\"XPlat Code Coverage\" --results-directory \"{tempDir}\"",
+                    Arguments = $"test \"{projectPath}\" --configuration Release --verbosity quiet --collect:\"XPlat Code Coverage\" --results-directory \"{tempDir}\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -118,7 +118,9 @@ namespace ComplexityCoverage.Infrastructure.Execution
                         {
                             // Merge: a line is covered if ANY test project covers it
                             if (!lines.TryGetValue(lineNum, out var existing) || !existing)
+                            {
                                 lines[lineNum] = isCovered;
+                            }
                         }
                     }
                 }

@@ -23,13 +23,18 @@ namespace ComplexityCoverage.Infrastructure.Coverage
             foreach (var classElement in GetClassElements(root))
             {
                 var fileNameAttr = classElement.Attribute("filename");
-                if (fileNameAttr == null) continue;
+                if (fileNameAttr == null)
+                {
+                    continue;
+                }
 
                 var filePath = ResolveFilePath(fileNameAttr.Value, baseDir);
                 var lineCoverage = ParseLineCoverage(classElement);
 
                 if (lineCoverage.Count > 0)
+                {
                     MergeFileCoverage(fileCoverage, filePath, lineCoverage);
+                }
             }
 
             var result = fileCoverage.ToDictionary(kv => kv.Key, kv => (IReadOnlyDictionary<int, bool>)kv.Value);
@@ -42,7 +47,10 @@ namespace ComplexityCoverage.Infrastructure.Coverage
         private static string? GetSourcesBaseDirectory(XElement root)
         {
             var sourceElement = root.Descendants("source").FirstOrDefault();
-            if (sourceElement == null) return null;
+            if (sourceElement == null)
+            {
+                return null;
+            }
 
             var sourceDir = sourceElement.Value.Trim();
             return string.IsNullOrEmpty(sourceDir) ? null : sourceDir;
@@ -61,11 +69,15 @@ namespace ComplexityCoverage.Infrastructure.Coverage
 
             // If already absolute, just normalize
             if (Path.IsPathRooted(filePath))
+            {
                 return Path.GetFullPath(filePath);
+            }
 
             // Resolve relative paths using base directory
             if (baseDir != null)
+            {
                 return Path.GetFullPath(Path.Combine(baseDir, filePath));
+            }
 
             // No base directory available — keep as-is
             return filePath;
@@ -103,10 +115,20 @@ namespace ComplexityCoverage.Infrastructure.Coverage
 
             var numberAttr = lineElement.Attribute("number");
             var hitsAttr = lineElement.Attribute("hits");
-            if (numberAttr == null || hitsAttr == null) return false;
+            if (numberAttr == null || hitsAttr == null)
+            {
+                return false;
+            }
 
-            if (!int.TryParse(numberAttr.Value, out lineNumber)) return false;
-            if (!int.TryParse(hitsAttr.Value, out var hits)) return false;
+            if (!int.TryParse(numberAttr.Value, out lineNumber))
+            {
+                return false;
+            }
+
+            if (!int.TryParse(hitsAttr.Value, out var hits))
+            {
+                return false;
+            }
 
             isCovered = hits > 0;
             return true;
@@ -121,7 +143,9 @@ namespace ComplexityCoverage.Infrastructure.Coverage
             }
 
             foreach (var entry in lineCoverage)
+            {
                 existing[entry.Key] = entry.Value;
+            }
         }
     }
 }

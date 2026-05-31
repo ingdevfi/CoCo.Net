@@ -41,7 +41,9 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             // Root summary HTML
             var summaryEntry = archive.CreateEntry(summaryFileName, CompressionLevel.Optimal);
             await using (var se = summaryEntry.Open())
+            {
                 await se.WriteAsync(Encoding.UTF8.GetBytes(summaryHtml));
+            }
 
             var sourceDetails = report.SourceDetails;
             if (sourceDetails is { Count: > 0 })
@@ -81,7 +83,10 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             while (dir is not null)
             {
                 if (Directory.EnumerateFiles(dir, "*.csproj").Any())
+                {
                     return Path.GetFileName(dir) ?? "unknown";
+                }
+
                 dir = Path.GetDirectoryName(dir);
             }
             // Fallback: immediate parent folder name
@@ -144,7 +149,10 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             sb.Append($"<thead><tr style=\"color:{t.SyntaxDefault};font-size:{t.HeaderFontSize};\">");
             sb.Append("<td class=\"ln\">#</td>");
             foreach (var name in strategyNames)
+            {
                 sb.Append($"<td class=\"cov\">{HtmlEncode(name)}</td>");
+            }
+
             sb.AppendLine("<td class=\"src\">Source</td></tr></thead>");
             sb.AppendLine("<tbody>");
 

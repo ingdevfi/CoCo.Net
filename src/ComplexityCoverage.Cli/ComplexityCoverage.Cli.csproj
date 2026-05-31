@@ -5,10 +5,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
 
     <!-- NuGet Package Settings -->
     <PackageId>ComplexityCoverage</PackageId>
@@ -23,6 +19,12 @@
     <PackageTags>complexity;coverage;testing;metrics;analysis;mccabe;halstead;maintainability</PackageTags>
     <PackageProjectUrl>https://github.com/ingdevfi/ComplexityCoverage.Net</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <!-- Self-contained single-file settings only apply during dotnet publish, not during build/test -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <SelfContained>true</SelfContained>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>
