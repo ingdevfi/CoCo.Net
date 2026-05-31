@@ -7,6 +7,7 @@ using ComplexityCoverage.Infrastructure.Execution;
 using ComplexityCoverage.Infrastructure.Reporting;
 using ComplexityCoverage.Infrastructure.Services;
 using ComplexityCoverage.Cli;
+using ComplexityCoverage.Cli.Config;
 
 return await ProgramRunner.RunAsync(args);
 
@@ -22,30 +23,36 @@ namespace ComplexityCoverage.Cli
                 return 0;
             }
 
-            var solutionPath = Path.GetFullPath(GetArgument(args, "--solution", "-s"));
-            var testProjectPath = GetArgument(args, "--test-project", "-t");
-            var outputPath = GetArgument(args, "--output", "-o") ?? "coverage-report.html";
-            var complexityStrategy = GetArgument(args, "--complexity", "-c") ?? "mi";
-            var timeoutStr = GetArgument(args, "--timeout", null) ?? "15";
-            var coverageFilePath = GetArgument(args, "--coverage-file", "-cf");
-            var coverageFormat = GetArgument(args, "--coverage-format", null);
-            var outputMode = (GetArgument(args, "--output-mode", "-m") ?? "html").ToLowerInvariant();
-            var themeName = GetArgument(args, "--theme", null);
-            var theme = ThemeLoader.Load(themeName);
+            // ── Config file ────────────────────────────────────────────────────
+            var configPath = GetArgument(args, "--config", null);
+            var cfg = ConfigLoader.Load(configPath);
+
+            // ── Argument resolution (CLI wins over config) ─────────────────────
+            var solutionArg    = GetArgument(args, "--solution", "-s")     ?? cfg?.Solution;
+            var testProjectArg = GetArgument(args, "--test-project", "-t") ?? cfg?.TestProject;
+            var outputArg      = GetArgument(args, "--output", "-o")       ?? cfg?.Output ?? "coverage-report.html";
+            var complexityArg  = GetArgument(args, "--complexity", "-c")   ?? cfg?.Complexity ?? "mi";
+            var timeoutArg     = GetArgument(args, "--timeout", null)      ?? cfg?.Timeout?.ToString() ?? "15";
+            var coverageFileArg   = GetArgument(args, "--coverage-file", "-cf")  ?? cfg?.CoverageFile;
+            var coverageFormatArg = GetArgument(args, "--coverage-format", null) ?? cfg?.CoverageFormat;
+            var outputModeArg  = (GetArgument(args, "--output-mode", "-m") ?? cfg?.OutputMode ?? "html").ToLowerInvariant();
+            var themeNameArg   = GetArgument(args, "--theme", null)        ?? cfg?.Theme;
+
+            var solutionPath = solutionArg is not null ? Path.GetFullPath(solutionArg) : null;
 
             if (string.IsNullOrEmpty(solutionPath))
             {
-                await Console.Error.WriteLineAsync("Error: --solution (-s) is required");
+                await Console.Error.WriteLineAsync("Error: --solution (-s) is required (or set \"solution\" in coco.config.json)");
                 return 1;
             }
 
-            if (!new[] { "console", "html", "zip", "zip+console" }.Contains(outputMode))
+            if (!new[] { "console", "html", "zip", "zip+console" }.Contains(outputModeArg))
             {
                 await Console.Error.WriteLineAsync("Error: --output-mode must be one of: console, html, zip, zip+console");
                 return 1;
             }
 
-            if (!int.TryParse(timeoutStr, out var timeoutMinutes) || timeoutMinutes <= 0)
+            if (!int.TryParse(timeoutArg, out var timeoutMinutes) || timeoutMinutes <= 0)
             {
                 await Console.Error.WriteLineAsync("Error: --timeout must be a positive integer (minutes)");
                 return 1;
@@ -53,12 +60,18 @@ namespace ComplexityCoverage.Cli
 
             var timeout = TimeSpan.FromMinutes(timeoutMinutes);
 
-            var strategies = CreateStrategies(complexityStrategy);
+            // ── Theme + overrides ──────────────────────────────────────────────
+            var theme = ThemeLoader.Load(themeNameArg);
+            if (cfg?.ThemeOverrides is { Count: > 0 } overrides)
+                theme = ConfigLoader.ApplyOverrides(theme, overrides);
+
+            // ── Strategies, runner, generator ─────────────────────────────────
+            var strategies = CreateStrategies(complexityArg);
 
             var coverageProvider = new CoberturaCoverageParser();
             var testRunner = new DotnetTestRunner(coverageProvider);
-            bool needsZip = outputMode is "zip" or "zip+console";
-            IReportGenerator reportGenerator = outputMode switch
+            bool needsZip = outputModeArg is "zip" or "zip+console";
+            IReportGenerator reportGenerator = outputModeArg switch
             {
                 "console" => new NullReportGenerator(),
                 "zip" or "zip+console" => new ZipReportGenerator(theme),
@@ -69,16 +82,16 @@ namespace ComplexityCoverage.Cli
             if (needsZip)
                 orchestrator.IncludeSourceDetails = true;
 
-            var config = new AnalysisConfig(solutionPath, testProjectPath, coverageFilePath, coverageFormat, timeout);
+            var config = new AnalysisConfig(solutionPath, testProjectArg, coverageFileArg, coverageFormatArg, timeout);
 
-            await PrintStartInfoAsync(config, outputPath, complexityStrategy, timeout, outputMode, theme.Name);
+            await PrintStartInfoAsync(config, outputArg, complexityArg, timeout, outputModeArg, theme.Name);
 
             try
             {
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-                var response = await orchestrator.RunCoverageAnalysisAsync(config, outputPath);
+                var response = await orchestrator.RunCoverageAnalysisAsync(config, outputArg);
                 stopwatch.Stop();
-                await PrintResponseAsync(response, outputPath, stopwatch.Elapsed, outputMode);
+                await PrintResponseAsync(response, outputArg, stopwatch.Elapsed, outputModeArg);
                 return response.Success ? 0 : 1;
             }
             catch (Exception ex)
@@ -123,6 +136,7 @@ namespace ComplexityCoverage.Cli
             await Console.Out.WriteLineAsync("  -s, --solution <path>       Path to the solution file (.sln or .slnx)");
             await Console.Out.WriteLineAsync();
             await Console.Out.WriteLineAsync("Options:");
+            await Console.Out.WriteLineAsync("      --config <path>         Path to a config file (default: coco.config.json in current directory)");
             await Console.Out.WriteLineAsync("  -t, --test-project <path>   Path to a specific test project (default: all test projects in the solution)");
             await Console.Out.WriteLineAsync("  -o, --output <path>         Output report path (default: coverage-report.html)");
             await Console.Out.WriteLineAsync("  -m, --output-mode <mode>    Output mode: console | html | zip | zip+console (default: html)");

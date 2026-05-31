@@ -2,7 +2,7 @@
 <img src="resources/Logo_3.jpg" alt="ComplexityCoverage.Net logo" width="180" />
 
 
-# ComplexityCoverage.Net
+# CoCo.Net
 
 Not all code lines matter the same, so why computing code coverage as a simple percentage of covered code.
 Calculate **complexity-weighted test coverage** for .NET projects. Instead of treating all code equally, weight coverage by complexity so that complex business logic gets appropriate emphasis.
@@ -95,6 +95,7 @@ dotnet run --project src/ComplexityCoverage.Cli -- \
 - `--coverage-file, -cf`: Path to an existing coverage file — skips running tests
 - `--coverage-format`: Coverage file format: `cobertura` (default), `opencover` (auto-detected if omitted)
 - `--theme`: Theme name or path — see [Themes](#themes) (default: `dark-monokai`)
+- `--config`: Path to a JSON config file — see [Configuration File](#configuration-file) (default: `coco.config.json` in current directory)
 
 ### Example Output
 
@@ -305,6 +306,34 @@ complexity-coverage \
   --coverage-file ./coverage/opencover.xml \
   --coverage-format opencover
 ```
+
+## Configuration File
+
+All CLI options can also be set in a **`coco.config.json`** file placed in the current working directory.
+CLI arguments take precedence over config-file values, so you can always override individual settings on the command line.
+
+```jsonc
+// coco.config.json
+{
+  "solution":    "src/MyApp.sln",
+  "outputMode":  "zip+console",
+  "complexity":  "all",
+  "timeout":     20,
+  "theme":       "dark-monokai",
+  "themeOverrides": {
+    "fontFamily": "'JetBrains Mono', monospace",
+    "bodyBg":     "#1e1e2e"
+  }
+}
+```
+
+Use `--config` to point to a file at a custom path:
+
+```bash
+complexity-coverage --config ./ci/coco.config.json
+```
+
+📖 Full reference including all properties and `themeOverrides` keys: [doc/configuration.md](doc/configuration.md)
 
 ## Architecture
 
