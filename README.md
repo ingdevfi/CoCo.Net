@@ -1,5 +1,5 @@
 
-<img src="resources/Logo_3.jpg" alt="ComplexityCoverage.Net logo" width="180" />
+<img src="resources/Dark_logo_2.jpg" alt="ComplexityCoverage.Net logo" width="180" />
 
 
 # CoCo.Net
