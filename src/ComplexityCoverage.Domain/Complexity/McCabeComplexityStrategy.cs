@@ -111,25 +111,21 @@ namespace ComplexityCoverage.Domain.Complexity
         {
             int decisionPoints = 0;
 
-            // Use DescendantNodes to get ALL nodes under the method
             foreach (var node in method.DescendantNodes())
             {
                 switch (node)
                 {
-                    // Count if statements
+                    // if statements — count the branch + any && / || in the condition
                     case IfStatementSyntax ifStmt:
                         decisionPoints++;
                         decisionPoints += CountLogicalOperators(ifStmt.Condition);
                         break;
 
-                    // Count loops
+                    // for loop — condition is optional
                     case ForStatementSyntax forStmt:
                         decisionPoints++;
                         if (forStmt.Condition != null)
-                        {
                             decisionPoints += CountLogicalOperators(forStmt.Condition);
-                        }
-
                         break;
 
                     case ForEachStatementSyntax:
@@ -141,22 +137,72 @@ namespace ComplexityCoverage.Domain.Complexity
                         decisionPoints += CountLogicalOperators(whileStmt.Condition);
                         break;
 
-                    // Count ternary operators  
+                    // ternary operator
                     case ConditionalExpressionSyntax ternary:
                         decisionPoints++;
                         decisionPoints += CountLogicalOperators(ternary.Condition);
                         break;
 
-                    // Count switch cases
+                    // switch sections (classic switch)
                     case SwitchSectionSyntax:
                         decisionPoints++;
                         break;
+
+                    // switch expression arms
+                    case SwitchExpressionArmSyntax:
+                        decisionPoints++;
+                        break;
+
+                    // null-coalescing operators (?? and ??=) are decision points
+                    case BinaryExpressionSyntax { RawKind: (int)SyntaxKind.CoalesceExpression }:
+                        decisionPoints++;
+                        break;
+
+                    case AssignmentExpressionSyntax { RawKind: (int)SyntaxKind.CoalesceAssignmentExpression }:
+                        decisionPoints++;
+                        break;
+
+                    // Logical && and || that appear OUTSIDE an if/while/for condition
+                    // (e.g. in variable initializers, assignments, argument expressions).
+                    // Those inside if/while/for are already counted above via CountLogicalOperators,
+                    // so we skip nodes whose immediate ancestor is an already-handled condition.
+                    case BinaryExpressionSyntax binaryExpr
+                        when binaryExpr.Kind() is SyntaxKind.LogicalAndExpression or SyntaxKind.LogicalOrExpression:
+                    {
+                        if (!IsInsideHandledCondition(binaryExpr))
+                            decisionPoints++;
+                        break;
+                    }
                 }
             }
 
-            // Apply formula: CC = 1 + decision_points
-            // This is equivalent to CC = E - N + 2P where P = 1
             return 1.0 + decisionPoints;
+        }
+
+        /// <summary>
+        /// Returns true when a logical binary expression is already counted as part of
+        /// an if / while / for condition processed by CountLogicalOperators above,
+        /// to avoid double-counting.
+        /// </summary>
+        private static bool IsInsideHandledCondition(SyntaxNode node)
+        {
+            var parent = node.Parent;
+            while (parent != null)
+            {
+                switch (parent)
+                {
+                    case IfStatementSyntax ifStmt when ifStmt.Condition.Contains(node):
+                    case WhileStatementSyntax whileStmt when whileStmt.Condition.Contains(node):
+                    case ForStatementSyntax forStmt when forStmt.Condition != null && forStmt.Condition.Contains(node):
+                    case ConditionalExpressionSyntax ternary when ternary.Condition.Contains(node):
+                        return true;
+                    // Stop walking up once we leave the expression context
+                    case StatementSyntax:
+                        return false;
+                }
+                parent = parent.Parent;
+            }
+            return false;
         }
 
         /// <summary>

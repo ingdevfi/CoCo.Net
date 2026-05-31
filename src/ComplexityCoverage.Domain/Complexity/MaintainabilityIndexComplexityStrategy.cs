@@ -65,37 +65,43 @@ namespace ComplexityCoverage.Domain.Complexity
         {
             var containingMethod = FindMethodContainingLine(lineNumber, root, tree);
             if (containingMethod == null)
-            {
                 return 0.0;
-            }
 
-            var miCache = _methodMICache.GetOrAdd(tree, _ => new ConcurrentDictionary<MethodDeclarationSyntax, double>());
-            return miCache.GetOrAdd(containingMethod, m => ComputeMethodMI(m, root, tree));
+            // Method-level metrics (cyclo + sloc) are cached; line-level Halstead is looked up below.
+            var metricsCache = _methodMetricsCache.GetOrAdd(tree, _ => new ConcurrentDictionary<MethodDeclarationSyntax, MethodLevelMetrics>());
+            var metrics = metricsCache.GetOrAdd(containingMethod, m => ComputeMethodMetrics(m, root, tree));
+
+            // Halstead caches internally by file content — looking up a single line is cheap.
+            var content = root.SyntaxTree.GetText().ToString();
+            var loc = new LineOfCode(lineNumber, "");
+            var singleLineFile = new SourceFile("temp.cs", "temp.cs", content, [loc]);
+            double halvol = _halsteadStrategy.CalculateWeight(loc, singleLineFile);
+
+            return CalculateMI(metrics.Cyclo, halvol, metrics.Sloc);
         }
 
-        private double ComputeMethodMI(MethodDeclarationSyntax method, SyntaxNode root, SyntaxTree tree)
+        /// <summary>
+        /// Computes and caches the method-level McCabe and SLOC metrics.
+        /// These are shared by all lines within the method; only Halstead varies per line.
+        /// </summary>
+        private MethodLevelMetrics ComputeMethodMetrics(MethodDeclarationSyntax method, SyntaxNode root, SyntaxTree tree)
         {
             var methodLines = GetMethodLines(method, tree);
             if (methodLines.Count == 0)
-            {
-                return 50.0;
-            }
+                return new MethodLevelMetrics(1.0, 1);
 
-            // Build a shared SourceFile with full content for cache-friendly strategy calls
             var content = root.SyntaxTree.GetText().ToString();
             var lineOfCodes = methodLines.Select(ln => new LineOfCode(ln, "")).ToArray();
             var sourceFile = new SourceFile("temp.cs", "temp.cs", content, lineOfCodes);
 
-            // McCabe is method-level: one call suffices
             double cyclo = _mccabeStrategy.CalculateWeight(lineOfCodes[0], sourceFile);
-
-            // Halstead is line-level: get weights for all method lines and average
-            var halsteadWeights = _halsteadStrategy.CalculateWeights(sourceFile);
-            double halvol = halsteadWeights.Count > 0 ? halsteadWeights.Average() : 1.0;
-
             int sloc = CountSourceLinesOfCode(method);
-            return CalculateMI(cyclo, halvol, sloc);
+            return new MethodLevelMetrics(cyclo, sloc);
         }
+
+        private readonly ConcurrentDictionary<SyntaxTree, ConcurrentDictionary<MethodDeclarationSyntax, MethodLevelMetrics>> _methodMetricsCache = new();
+
+        private readonly record struct MethodLevelMetrics(double Cyclo, int Sloc);
 
         /// <summary>
         /// Computes the normalized inverted MI weight from the three input metrics.
