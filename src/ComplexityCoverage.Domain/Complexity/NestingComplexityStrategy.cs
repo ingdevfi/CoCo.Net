@@ -41,7 +41,7 @@ namespace ComplexityCoverage.Domain.Complexity
         protected override double CalculateLineWeight(int lineNumber, SyntaxNode root, SyntaxTree tree)
         {
             var lineWeights = _lineWeightCache.GetOrAdd(tree, _ => BuildLineWeightMap(root, tree));
-            return lineWeights.TryGetValue(lineNumber, out var weight) ? weight : 1.0;
+            return lineWeights.TryGetValue(lineNumber, out var weight) ? weight : 0.0;
         }
 
         /// <summary>
@@ -52,6 +52,20 @@ namespace ComplexityCoverage.Domain.Complexity
         private static Dictionary<int, double> BuildLineWeightMap(SyntaxNode root, SyntaxTree tree)
         {
             var lineWeights = new Dictionary<int, double>();
+
+            // Seed every line that belongs to a method body with base weight 1.0.
+            // Lines outside methods (class body, field declarations, …) stay absent
+            // from the map and will return 0 via the fallback in CalculateLineWeight.
+            foreach (var method in root.DescendantNodes().OfType<MethodDeclarationSyntax>()
+                .Concat<SyntaxNode>(root.DescendantNodes().OfType<ConstructorDeclarationSyntax>())
+                .Concat(root.DescendantNodes().OfType<LocalFunctionStatementSyntax>()))
+            {
+                var methodSpan = tree.GetLineSpan(method.Span);
+                int mStart = methodSpan.StartLinePosition.Line + 1;
+                int mEnd   = methodSpan.EndLinePosition.Line + 1;
+                for (int line = mStart; line <= mEnd; line++)
+                    lineWeights.TryAdd(line, 1.0);
+            }
 
             // Walk all nesting-contributing nodes once
             foreach (var node in root.DescendantNodes())
@@ -72,7 +86,8 @@ namespace ComplexityCoverage.Domain.Complexity
                 {
                     if (!lineWeights.TryGetValue(line, out var current))
                     {
-                        lineWeights[line] = 1.0 + contribution;
+                        // Line is outside any method — store nesting contribution only (no base)
+                        lineWeights[line] = contribution;
                     }
                     else
                     {

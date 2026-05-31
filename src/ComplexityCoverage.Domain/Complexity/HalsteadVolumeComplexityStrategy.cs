@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Concurrent;
 
 namespace ComplexityCoverage.Domain.Complexity
@@ -61,9 +62,27 @@ namespace ComplexityCoverage.Domain.Complexity
 
         /// <summary>
         /// Builds a map of line number to Halstead volume complexity.
+        /// Only lines that belong to a method/constructor/local-function body are included;
+        /// using directives, namespace and type declarations are excluded.
         /// </summary>
         private static Dictionary<int, double> BuildLineComplexityMap(SyntaxNode root, SyntaxTree tree)
         {
+            // Build the set of lines that are inside an executable member body.
+            var methodLines = new HashSet<int>();
+            foreach (var node in root.DescendantNodes())
+            {
+                if (node is not MethodDeclarationSyntax
+                         and not ConstructorDeclarationSyntax
+                         and not LocalFunctionStatementSyntax)
+                    continue;
+
+                var span = tree.GetLineSpan(node.Span);
+                int start = span.StartLinePosition.Line + 1;
+                int end   = span.EndLinePosition.Line + 1;
+                for (int l = start; l <= end; l++)
+                    methodLines.Add(l);
+            }
+
             var allTokens = GetAllTokens(root);
 
             var operatorsByLine = new Dictionary<int, HashSet<string>>();
@@ -74,6 +93,10 @@ namespace ComplexityCoverage.Domain.Complexity
             foreach (var token in allTokens)
             {
                 int lineNumber = tree.GetLineSpan(token.Span).StartLinePosition.Line + 1;
+
+                // Skip tokens that are not inside a method body
+                if (!methodLines.Contains(lineNumber))
+                    continue;
 
                 if (IsOperator(token))
                 {

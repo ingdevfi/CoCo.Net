@@ -95,8 +95,8 @@ namespace ComplexityCoverage.Domain.Complexity
 
             if (containingMethod == null)
             {
-                // Line is not in a method → complexity 1
-                return 1.0;
+                // Line is not inside a method → no executable complexity
+                return 0.0;
             }
 
             // Check cache

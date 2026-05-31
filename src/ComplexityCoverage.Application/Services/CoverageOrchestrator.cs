@@ -178,16 +178,18 @@ namespace ComplexityCoverage.Application.Services
             }
 
             var coveredLines = 0;
-            var coverableLines = 0; // lines Coverlet actually tracked (excludes blanks, comments, braces)
+            var coverableLines = 0; // lines Coverlet actually tracked, minus non-executable declarations (using, namespace, class, …)
             if (lineCoverage != null)
             {
-                coverableLines = lineCoverage.Count;
                 foreach (var line in file.Lines)
                 {
-                    if (lineCoverage.TryGetValue(line.LineNumber, out var isCovered) && isCovered)
-                    {
+                    if (!lineCoverage.TryGetValue(line.LineNumber, out var isCovered))
+                        continue;
+                    if (IsNonExecutableLine(line.RawText))
+                        continue;
+                    coverableLines++;
+                    if (isCovered)
                         coveredLines++;
-                    }
                 }
             }
 
@@ -210,14 +212,20 @@ namespace ComplexityCoverage.Application.Services
 
                 for (int i = 0; i < file.Lines.Count; i++)
                 {
+                    var lineNumber = file.Lines[i].LineNumber;
                     var weight = weights[i];
                     lineWeights[i] = weight;
+
+                    // Only count lines that Coverlet actually instrumented (coverable lines).
+                    // Non-executable declarations (using, namespace, class/struct/record/…) must not inflate the denominator.
+                    if (lineCoverage == null || !lineCoverage.ContainsKey(lineNumber))
+                        continue;
+                    if (IsNonExecutableLine(file.Lines[i].RawText))
+                        continue;
+
                     fileAllWeight += weight;
-                    if (lineCoverage != null
-                        && lineCoverage.TryGetValue(file.Lines[i].LineNumber, out var isCovered) && isCovered)
-                    {
+                    if (lineCoverage.TryGetValue(lineNumber, out var isCovered) && isCovered)
                         fileCoveredWeight += weight;
-                    }
                 }
 
                 var weightedPct = fileAllWeight > 0 ? fileCoveredWeight / fileAllWeight * 100 : 0;
@@ -270,6 +278,60 @@ namespace ComplexityCoverage.Application.Services
         {
             path = path.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
             try { return Path.GetFullPath(path); } catch { return path; }
+        }
+
+        /// <summary>
+        /// Returns true when a raw source line is a structural / non-executable declaration
+        /// that carries no meaningful runtime complexity and must be excluded from both
+        /// line-coverage and weighted-coverage denominators.
+        ///
+        /// Covered cases:
+        ///   • using / global using directives
+        ///   • namespace declarations
+        ///   • type declarations: class, struct, record, interface, enum
+        ///     (with any leading access/modifier keywords stripped first)
+        /// </summary>
+        static bool IsNonExecutableLine(string rawText)
+        {
+            var trimmed = rawText.AsSpan().TrimStart();
+
+            // using directives
+            if (trimmed.StartsWith("using ", StringComparison.Ordinal)
+                || trimmed.StartsWith("global using ", StringComparison.Ordinal))
+                return true;
+
+            // namespace declarations ("namespace Foo" or "namespace Foo {")
+            if (trimmed.StartsWith("namespace ", StringComparison.Ordinal))
+                return true;
+
+            // Strip leading access/modifier keywords so we can detect the type keyword.
+            // Modifiers: public, private, protected, internal, static, abstract,
+            //            sealed, partial, readonly, unsafe, file
+            ReadOnlySpan<string> modifiers = ["public ", "private ", "protected ", "internal ",
+                "static ", "abstract ", "sealed ", "partial ", "readonly ", "unsafe ", "file "];
+
+            var rest = trimmed;
+            bool advanced = true;
+            while (advanced)
+            {
+                advanced = false;
+                foreach (var mod in modifiers)
+                {
+                    if (rest.StartsWith(mod, StringComparison.Ordinal))
+                    {
+                        rest = rest.Slice(mod.Length).TrimStart();
+                        advanced = true;
+                        break;
+                    }
+                }
+            }
+
+            // Type-declaration keywords
+            return rest.StartsWith("class ", StringComparison.Ordinal)
+                || rest.StartsWith("struct ", StringComparison.Ordinal)
+                || rest.StartsWith("record ", StringComparison.Ordinal)
+                || rest.StartsWith("interface ", StringComparison.Ordinal)
+                || rest.StartsWith("enum ", StringComparison.Ordinal);
         }
     }
 }

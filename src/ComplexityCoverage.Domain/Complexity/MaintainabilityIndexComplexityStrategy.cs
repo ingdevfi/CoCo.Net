@@ -182,7 +182,7 @@ namespace ComplexityCoverage.Domain.Complexity
         /// </summary>
         private static List<int> GetMethodLines(MethodDeclarationSyntax method, SyntaxTree tree)
         {
-            var methodSpan = tree.GetLineSpan(method.FullSpan);
+            var methodSpan = tree.GetLineSpan(method.Span);
             int startLine = methodSpan.StartLinePosition.Line + 1;
             int endLine = methodSpan.EndLinePosition.Line + 1;
 
@@ -221,7 +221,7 @@ namespace ComplexityCoverage.Domain.Complexity
             var spans = new List<MethodSpan>();
             foreach (var method in root.DescendantNodes().OfType<MethodDeclarationSyntax>())
             {
-                var lineSpan = tree.GetLineSpan(method.FullSpan);
+                var lineSpan = tree.GetLineSpan(method.Span);
                 spans.Add(new MethodSpan(
                     method,
                     lineSpan.StartLinePosition.Line + 1,
