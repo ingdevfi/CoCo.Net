@@ -94,6 +94,7 @@ dotnet run --project src/ComplexityCoverage.Cli -- \
 - `--timeout`: Test execution timeout in minutes (default: 15)
 - `--coverage-file, -cf`: Path to an existing coverage file — skips running tests
 - `--coverage-format`: Coverage file format: `cobertura` (default), `opencover` (auto-detected if omitted)
+- `--theme`: Theme name or path — see [Themes](#themes) (default: `dark-monokai`)
 
 ### Example Output
 
@@ -131,16 +132,19 @@ Report saved to: coverage-report.html
 
 Use `--output-mode` (or `-m`) to choose how results are reported:
 
-| Mode | Alias | Files written | Description |
-|---|---|---|---|
-| `html` | — | `<output>.html` | **Default.** Console table + HTML summary report |
-| `console` | — | *(none)* | Console table only — no file written |
-| `zip` | — | `<output>.html` + `<output>.zip` | Console + HTML summary + ZIP archive with one annotated HTML per source file |
+| Mode | Files written | Description |
+|---|---|---|
+| `html` | `<output>.html` | **Default.** HTML summary report only |
+| `console` | *(none)* | Console table only — no file written |
+| `zip` | `<output>.zip` | ZIP archive only (summary HTML + annotated per-file HTML) |
+| `zip+console` | `<output>.zip` | ZIP archive **and** console table |
 
 ### `html` mode (default)
 
+Writes a standalone HTML summary report. No console table is printed.
+
 ```bash
-# Equivalent — both produce the HTML summary report
+# Both are equivalent
 complexity-coverage --solution Solution.sln
 complexity-coverage --solution Solution.sln --output-mode html --output report.html
 ```
@@ -155,19 +159,32 @@ complexity-coverage --solution Solution.sln --output-mode console
 
 ### `zip` mode
 
-Generates:
-1. **`<output>.html`** — the same HTML summary as `html` mode
-2. **`<output>.zip`** — one HTML file per source file, each showing:
+Generates a single ZIP archive (no standalone `.html` file). The archive contains:
+1. **`coverage-report.html`** — the same HTML summary as `html` mode, at the root of the archive
+2. **`<project>/<file>.html`** — one annotated HTML file per source file, organized by project folder, each showing:
    - Coverage status per line (green = covered, red = uncovered)
    - Complexity weight per line for each active strategy shown in the margin
    - Summary cards (line coverage + weighted coverage per strategy) at the top
+   - Syntax-highlighted C# source code
 
 ```bash
 complexity-coverage \
   --solution Solution.sln \
   --output-mode zip \
   --output report.html
-# Writes: report.html  +  report.zip
+# Writes: report.zip  (contains coverage-report.html + per-file HTML)
+```
+
+### `zip+console` mode
+
+Same as `zip` but also prints the console table.
+
+```bash
+complexity-coverage \
+  --solution Solution.sln \
+  --output-mode zip+console \
+  --output report.html
+# Writes: report.zip  +  prints table to console
 ```
 
 ## Test Project Auto-Detection
@@ -342,12 +359,47 @@ Generated report includes:
 
 ### ZIP Report (annotated per-file HTML)
 
-When using `--output-mode zip`, the archive contains one dark-themed HTML file per source file:
-- **Green rows** — lines covered by tests
-- **Red rows** — lines not covered
-- **Grey rows** — lines with no coverage data (e.g., blank lines, comments)
-- **Complexity margin** — each active strategy's weight is shown next to the line number
-- **Summary cards** at the top display line coverage and weighted coverage for the file
+When using `--output-mode zip` or `zip+console`, the archive contains:
+- **`coverage-report.html`** — an HTML summary at the archive root (same content as `html` mode)
+- **`<project>/<file>.html`** — one annotated file per source file, organized by project folder:
+  - **Green rows** — lines covered by tests
+  - **Red rows** — lines not covered
+  - **Grey rows** — lines with no coverage data (e.g., blank lines, comments)
+  - **Complexity margin** — each active strategy's weight is shown next to the line number
+  - **Syntax highlighting** — C# keywords, types, strings, comments, and control flow are coloured using the active theme
+  - **Summary cards** at the top display line coverage and weighted coverage for the file
+
+### Themes
+
+All HTML output (standalone report and ZIP per-file views) is themed. Use `--theme` to select a theme:
+
+```bash
+complexity-coverage --solution Solution.sln --theme light
+complexity-coverage --solution Solution.sln --theme dark-monokai   # default
+complexity-coverage --solution Solution.sln --theme ./my-theme.json
+```
+
+Two built-in themes are shipped as editable JSON files next to the binary in the `themes/` folder:
+
+| Name | File | Description |
+|---|---|---|
+| `dark-monokai` | `themes/dark-monokai.json` | **Default.** Dark background with Monokai-inspired syntax colours |
+| `light` | `themes/light.json` | Light background with neutral syntax colours |
+
+You can freely edit the JSON files or create new ones. All colour values are standard CSS hex values (`#rrggbb`) and the file supports `//` comments. Recognised properties:
+
+| Property | Type | Description |
+|---|---|---|
+| `fontFamily` | CSS font-family | Font used for all report text |
+| `fontSize` | CSS size (e.g. `13px`) | Base font size for body text |
+| `headerFontSize` | CSS size (e.g. `1.1em`) | Font size for `<h1>` / `<h2>` headings |
+| `bodyBg` / `bodyFg` | Hex colour | Page background and foreground |
+| `headerBg` / `headerBorder` / `headerFg` | Hex colour | Sticky table-header row colours |
+| `cardLineBg` / `cardStrategyBg` / `cardFg` | Hex colour | Summary card backgrounds and text |
+| `tableBorder` / `tableHeaderBg` / `tableHeaderFg` / `tableRowAltBg` | Hex colour | Summary table styling |
+| `coveredBg` / `uncoveredBg` | Hex colour | Per-file view row backgrounds |
+| `gutterFg` / `gutterBorder` / `complexityFg` / `rowBorder` / `stickyHeaderBg` | Hex colour | Per-file view gutter and layout colours |
+| `syntaxKeyword` / `syntaxControlFlow` / `syntaxString` / `syntaxNumber` / `syntaxComment` / `syntaxPreproc` / `syntaxType` / `syntaxDefault` | Hex colour | Syntax highlighting token colours |
 
 ### Interpretation
 

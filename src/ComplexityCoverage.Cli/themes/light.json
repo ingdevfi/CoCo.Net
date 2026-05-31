@@ -1,0 +1,49 @@
+{
+  // ComplexityCoverage — Light theme
+  // You can edit any colour value below. Colours are standard CSS hex values (#rrggbb).
+  // Property names are case-insensitive when loaded.
+
+  "name": "light",
+
+  // ── Font ────────────────────────────────────────────────────────────────────
+  "fontFamily":     "'Segoe UI', Arial, sans-serif",
+  "fontSize":       "14px",
+  "headerFontSize": "1.2em",
+
+  // ── General UI ──────────────────────────────────────────────────────────────
+  "bodyBg":         "#ffffff",
+  "bodyFg":         "#24292e",
+  "headerBg":       "#f6f8fa",
+  "headerBorder":   "#d0d7de",
+  "headerFg":       "#57606a",
+
+  // Summary cards (top of each report)
+  "cardLineBg":     "#0969da",
+  "cardStrategyBg": "#1f6feb",
+  "cardFg":         "#ffffff",
+
+  // ── Summary table (HTML report) ─────────────────────────────────────────────
+  "tableBorder":    "#d0d7de",
+  "tableHeaderBg":  "#0969da",
+  "tableHeaderFg":  "#ffffff",
+  "tableRowAltBg":  "#f6f8fa",
+
+  // ── Source file view (ZIP per-file HTML) ────────────────────────────────────
+  "coveredBg":      "#d4edda",
+  "uncoveredBg":    "#f8d7da",
+  "gutterFg":       "#8b949e",
+  "gutterBorder":   "#d0d7de",
+  "complexityFg":   "#57606a",
+  "rowBorder":      "#eaecef",
+  "stickyHeaderBg": "#f6f8fa",
+
+  // ── Syntax highlighting ─────────────────────────────────────────────────────
+  "syntaxKeyword":     "#0550ae",
+  "syntaxControlFlow": "#8250df",
+  "syntaxString":      "#0a3069",
+  "syntaxNumber":      "#0550ae",
+  "syntaxComment":     "#6e7781",
+  "syntaxPreproc":     "#953800",
+  "syntaxType":        "#116329",
+  "syntaxDefault":     "#24292e"
+}

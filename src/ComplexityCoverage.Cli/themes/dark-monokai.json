@@ -1,0 +1,49 @@
+{
+  // ComplexityCoverage — Dark Monokai theme
+  // You can edit any colour value below. Colours are standard CSS hex values (#rrggbb).
+  // Property names are case-insensitive when loaded.
+
+  "name": "dark-monokai",
+
+  // ── Font ────────────────────────────────────────────────────────────────────
+  "fontFamily": "'Cascadia Code', 'Fira Code', 'Consolas', monospace",
+  "fontSize":       "13px",
+  "headerFontSize": "1.1em",
+
+  // ── General UI ──────────────────────────────────────────────────────────────
+  "bodyBg":         "#272822",
+  "bodyFg":         "#f8f8f2",
+  "headerBg":       "#1e1f1c",
+  "headerBorder":   "#3e3d32",
+  "headerFg":       "#a59f85",
+
+  // Summary cards (top of each report)
+  "cardLineBg":     "#75715e",
+  "cardStrategyBg": "#49483e",
+  "cardFg":         "#f8f8f2",
+
+  // ── Summary table (HTML report) ─────────────────────────────────────────────
+  "tableBorder":    "#3e3d32",
+  "tableHeaderBg":  "#49483e",
+  "tableHeaderFg":  "#f8f8f2",
+  "tableRowAltBg":  "#2d2e27",
+
+  // ── Source file view (ZIP per-file HTML) ────────────────────────────────────
+  "coveredBg":      "#1a3a1a",
+  "uncoveredBg":    "#3a1a1a",
+  "gutterFg":       "#75715e",
+  "gutterBorder":   "#3e3d32",
+  "complexityFg":   "#75715e",
+  "rowBorder":      "#3e3d32",
+  "stickyHeaderBg": "#1e1f1c",
+
+  // ── Syntax highlighting (Monokai palette) ───────────────────────────────────
+  "syntaxKeyword":     "#f92672",
+  "syntaxControlFlow": "#ae81ff",
+  "syntaxString":      "#e6db74",
+  "syntaxNumber":      "#ae81ff",
+  "syntaxComment":     "#75715e",
+  "syntaxPreproc":     "#a6e22e",
+  "syntaxType":        "#a6e22e",
+  "syntaxDefault":     "#f8f8f2"
+}

@@ -30,6 +30,8 @@ namespace ComplexityCoverage.Cli
             var coverageFilePath = GetArgument(args, "--coverage-file", "-cf");
             var coverageFormat = GetArgument(args, "--coverage-format", null);
             var outputMode = (GetArgument(args, "--output-mode", "-m") ?? "html").ToLowerInvariant();
+            var themeName = GetArgument(args, "--theme", null);
+            var theme = ThemeLoader.Load(themeName);
 
             if (string.IsNullOrEmpty(solutionPath))
             {
@@ -37,9 +39,9 @@ namespace ComplexityCoverage.Cli
                 return 1;
             }
 
-            if (!new[] { "console", "html", "zip" }.Contains(outputMode))
+            if (!new[] { "console", "html", "zip", "zip+console" }.Contains(outputMode))
             {
-                await Console.Error.WriteLineAsync("Error: --output-mode must be one of: console, html, zip");
+                await Console.Error.WriteLineAsync("Error: --output-mode must be one of: console, html, zip, zip+console");
                 return 1;
             }
 
@@ -55,20 +57,21 @@ namespace ComplexityCoverage.Cli
 
             var coverageProvider = new CoberturaCoverageParser();
             var testRunner = new DotnetTestRunner(coverageProvider);
+            bool needsZip = outputMode is "zip" or "zip+console";
             IReportGenerator reportGenerator = outputMode switch
             {
                 "console" => new NullReportGenerator(),
-                "zip" => new ZipReportGenerator(),
-                _ => new HtmlReportGenerator()
+                "zip" or "zip+console" => new ZipReportGenerator(theme),
+                _ => new HtmlReportGenerator(theme)
             };
             var fileDiscoveryService = new SourceFileDiscoveryService();
             var orchestrator = new CoverageOrchestrator(testRunner, strategies, reportGenerator, fileDiscoveryService);
-            if (outputMode == "zip")
+            if (needsZip)
                 orchestrator.IncludeSourceDetails = true;
 
             var config = new AnalysisConfig(solutionPath, testProjectPath, coverageFilePath, coverageFormat, timeout);
 
-            await PrintStartInfoAsync(config, outputPath, complexityStrategy, timeout, outputMode);
+            await PrintStartInfoAsync(config, outputPath, complexityStrategy, timeout, outputMode, theme.Name);
 
             try
             {
@@ -122,15 +125,18 @@ namespace ComplexityCoverage.Cli
             await Console.Out.WriteLineAsync("Options:");
             await Console.Out.WriteLineAsync("  -t, --test-project <path>   Path to a specific test project (default: all test projects in the solution)");
             await Console.Out.WriteLineAsync("  -o, --output <path>         Output report path (default: coverage-report.html)");
-            await Console.Out.WriteLineAsync("  -m, --output-mode <mode>    Output mode: console | html | zip (default: html)");
-            await Console.Out.WriteLineAsync("                               console  Console table only, no file written");
-            await Console.Out.WriteLineAsync("                               html     Console + HTML summary report (default)");
-            await Console.Out.WriteLineAsync("                               zip      Console + HTML summary + ZIP with annotated per-file HTML");
+            await Console.Out.WriteLineAsync("  -m, --output-mode <mode>    Output mode: console | html | zip | zip+console (default: html)");
+            await Console.Out.WriteLineAsync("                               console      Console table only, no file written");
+            await Console.Out.WriteLineAsync("                               html         HTML summary report only (default)");
+            await Console.Out.WriteLineAsync("                               zip          ZIP archive only (summary HTML + annotated per-file HTML)");
+            await Console.Out.WriteLineAsync("                               zip+console  ZIP archive + console table");
             await Console.Out.WriteLineAsync("  -c, --complexity <strategy>  Complexity strategy: mccabe, nesting, halstead, mi, all (default: mi)");
             await Console.Out.WriteLineAsync("                               Comma-separated for multiple: mccabe,halstead");
             await Console.Out.WriteLineAsync("      --timeout <minutes>     Test execution timeout in minutes (default: 15)");
             await Console.Out.WriteLineAsync("  -cf, --coverage-file <path>  Path to an existing coverage file (skips test run)");
             await Console.Out.WriteLineAsync("      --coverage-format <fmt>  Coverage format: cobertura (default), opencover (auto-detected if omitted)");
+            await Console.Out.WriteLineAsync("      --theme <name|path>      Report theme: light | dark-monokai (default) | path/to/custom.json");
+            await Console.Out.WriteLineAsync("                               Theme files are loaded from the 'themes/' folder next to the binary.");
             await Console.Out.WriteLineAsync("  -h, --help                  Show this help message");
             await Console.Out.WriteLineAsync();
             await Console.Out.WriteLineAsync("Test Discovery:");
@@ -139,7 +145,7 @@ namespace ComplexityCoverage.Cli
             await Console.Out.WriteLineAsync("  Coverage results from multiple test projects are merged.");
         }
 
-        private static async Task PrintStartInfoAsync(AnalysisConfig config, string outputPath, string complexityStrategy, TimeSpan timeout, string outputMode)
+        private static async Task PrintStartInfoAsync(AnalysisConfig config, string outputPath, string complexityStrategy, TimeSpan timeout, string outputMode, string themeName)
         {
             await Console.Out.WriteLineAsync("Starting complexity coverage analysis...");
             await Console.Out.WriteLineAsync($"Solution: {config.SolutionPath}");
@@ -147,6 +153,7 @@ namespace ComplexityCoverage.Cli
             await Console.Out.WriteLineAsync($"Output Mode: {outputMode}");
             if (outputMode != "console")
                 await Console.Out.WriteLineAsync($"Output: {outputPath}");
+            await Console.Out.WriteLineAsync($"Theme: {themeName}");
             await Console.Out.WriteLineAsync($"Complexity Strategy: {complexityStrategy}");
             await Console.Out.WriteLineAsync($"Timeout: {timeout}");
             await Console.Out.WriteLineAsync();
@@ -160,8 +167,12 @@ namespace ComplexityCoverage.Cli
                 return;
             }
 
-            await PrintSummaryAsync(response, elapsed);
-            await PrintFileTableAsync(response);
+            // console output is suppressed only for zip-only mode
+            if (outputMode != "zip")
+            {
+                await PrintSummaryAsync(response, elapsed);
+                await PrintFileTableAsync(response);
+            }
             await PrintOutputPathsAsync(outputPath, outputMode);
         }
 
@@ -214,9 +225,9 @@ namespace ComplexityCoverage.Cli
 
         private static async Task PrintOutputPathsAsync(string outputPath, string outputMode)
         {
-            if (outputMode == "html" || outputMode == "zip")
+            if (outputMode == "html")
                 await Console.Out.WriteLineAsync($"Report saved to: {outputPath}");
-            if (outputMode == "zip")
+            if (outputMode is "zip" or "zip+console")
                 await Console.Out.WriteLineAsync($"ZIP archive saved to: {Path.ChangeExtension(outputPath, ".zip")}");
         }
 

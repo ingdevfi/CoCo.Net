@@ -7,64 +7,96 @@ using ComplexityCoverage.Domain.Models;
 namespace ComplexityCoverage.Infrastructure.Reporting
 {
     /// <summary>
-    /// Report generator that writes:
-    ///   - The standard HTML summary report (same as HtmlReportGenerator)
-    ///   - A ZIP archive (same base name, .zip extension) containing one annotated HTML per source file
+    /// Report generator that writes a ZIP archive containing:
+    ///   - <c>coverage-report.html</c> at the root (the HTML summary)
+    ///   - One annotated HTML per source file, organised by project folder
     /// </summary>
     public class ZipReportGenerator : IReportGenerator
     {
-        private readonly HtmlReportGenerator _htmlGenerator = new();
+        private readonly ThemeDefinition _theme;
+        private readonly HtmlReportGenerator _htmlGenerator;
+
+        public ZipReportGenerator(ThemeDefinition? theme = null)
+        {
+            _theme = theme ?? ThemeDefinition.DarkMonokai;
+            _htmlGenerator = new HtmlReportGenerator(_theme);
+        }
 
         public async Task GenerateReportAsync(WeightedReport report, string outputPath)
         {
-            // 1. Write the summary HTML report (standard behaviour)
-            await _htmlGenerator.GenerateReportAsync(report, outputPath);
+            // Build the summary HTML in memory (no standalone file written)
+            var summaryHtml = await _htmlGenerator.BuildHtmlAsync(report);
 
-            // 2. Write the ZIP archive
+            // Write the ZIP archive
             var zipPath = Path.ChangeExtension(outputPath, ".zip");
-            await BuildZipAsync(report, zipPath);
+            await BuildZipAsync(report, zipPath, summaryHtml, Path.GetFileName(outputPath), _theme);
         }
 
-        private static async Task BuildZipAsync(WeightedReport report, string zipPath)
+        private static async Task BuildZipAsync(WeightedReport report, string zipPath,
+            string summaryHtml, string summaryFileName, ThemeDefinition theme)
         {
-            var sourceDetails = report.SourceDetails;
-            if (sourceDetails == null || sourceDetails.Count == 0)
-                return;
-
-            // Build a lookup for weight details by file path
-            var weightLookup = report.FileDetails
-                .ToDictionary(f => f.FilePath, StringComparer.OrdinalIgnoreCase);
-
             using var zipStream = new FileStream(zipPath, FileMode.Create, FileAccess.Write);
             using var archive = new ZipArchive(zipStream, ZipArchiveMode.Create, leaveOpen: false);
 
-            foreach (var fileDetail in sourceDetails)
-            {
-                var entryName = BuildEntryName(fileDetail.FilePath);
-                var html = BuildFileHtml(fileDetail, report.StrategyNames,
-                    weightLookup.TryGetValue(fileDetail.FilePath, out var wd) ? wd : null);
+            // Root summary HTML
+            var summaryEntry = archive.CreateEntry(summaryFileName, CompressionLevel.Optimal);
+            await using (var se = summaryEntry.Open())
+                await se.WriteAsync(Encoding.UTF8.GetBytes(summaryHtml));
 
-                var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
-                await using var entryStream = entry.Open();
-                await entryStream.WriteAsync(Encoding.UTF8.GetBytes(html));
+            var sourceDetails = report.SourceDetails;
+            if (sourceDetails is { Count: > 0 })
+            {
+                var weightLookup = report.FileDetails
+                    .ToDictionary(f => f.FilePath, StringComparer.OrdinalIgnoreCase);
+
+                foreach (var fileDetail in sourceDetails)
+                {
+                    var entryName = BuildEntryName(fileDetail.FilePath);
+                    var html = BuildFileHtml(fileDetail, report.StrategyNames,
+                        weightLookup.TryGetValue(fileDetail.FilePath, out var wd) ? wd : null,
+                        theme);
+
+                    var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
+                    await using var entryStream = entry.Open();
+                    await entryStream.WriteAsync(Encoding.UTF8.GetBytes(html));
+                }
             }
         }
 
         private static string BuildEntryName(string filePath)
         {
-            // Use the last two path segments to avoid name collisions while keeping context
-            var parts = filePath.Replace('\\', '/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-            var name = parts.Length >= 2
-                ? string.Join("_", parts[^2], parts[^1])
-                : parts[^1];
-            return name + ".html";
+            var projectFolder = ResolveProjectFolderName(filePath);
+            var fileName = Path.GetFileName(filePath);
+            return $"{projectFolder}/{fileName}.html";
+        }
+
+        /// <summary>
+        /// Walks up the directory tree from <paramref name="filePath"/> to find the nearest
+        /// folder that contains a <c>.csproj</c> file. Returns that folder's name.
+        /// Falls back to the immediate parent folder name if no project is found.
+        /// </summary>
+        private static string ResolveProjectFolderName(string filePath)
+        {
+            var dir = Path.GetDirectoryName(filePath);
+            while (dir is not null)
+            {
+                if (Directory.EnumerateFiles(dir, "*.csproj").Any())
+                    return Path.GetFileName(dir) ?? "unknown";
+                dir = Path.GetDirectoryName(dir);
+            }
+            // Fallback: immediate parent folder name
+            return Path.GetFileName(Path.GetDirectoryName(filePath) ?? string.Empty) ?? "unknown";
         }
 
         private static string BuildFileHtml(FileSourceDetails fileDetail,
-            IReadOnlyList<string> strategyNames, FileWeightDetails? weightDetails)
+            IReadOnlyList<string> strategyNames, FileWeightDetails? weightDetails,
+            ThemeDefinition t)
         {
             var sb = new StringBuilder();
             var fileName = Path.GetFileName(fileDetail.FilePath);
+
+            var rawSource = string.Join("\n", fileDetail.Lines.Select(l => l.RawText));
+            var highlightedLines = CSharpSyntaxHighlighter.BuildHighlightedLines(rawSource, t);
 
             sb.AppendLine("<!DOCTYPE html>");
             sb.AppendLine("<html>");
@@ -72,23 +104,26 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             sb.AppendLine($"<title>{HtmlEncode(fileName)}</title>");
             sb.AppendLine("<meta charset=\"utf-8\"/>");
             sb.AppendLine("<style>");
-            sb.AppendLine("body { font-family: 'Consolas', monospace; font-size: 13px; margin: 0; background: #1e1e1e; color: #d4d4d4; }");
-            sb.AppendLine(".header { padding: 12px 20px; background: #252526; border-bottom: 1px solid #3c3c3c; }");
-            sb.AppendLine(".header h1 { margin: 0 0 6px 0; font-size: 1em; color: #ccc; }");
+            sb.AppendLine($"html, body {{ height: 100%; margin: 0; overflow: hidden; font-family: {t.FontFamily}; font-size: {t.FontSize}; background: {t.BodyBg}; color: {t.BodyFg}; }}");
+            sb.AppendLine($".header {{ padding: 12px 20px; background: {t.HeaderBg}; border-bottom: 1px solid {t.HeaderBorder}; flex-shrink: 0; }}");
+            sb.AppendLine($".header h1 {{ margin: 0 0 6px 0; font-size: {t.HeaderFontSize}; color: {t.SyntaxDefault}; }}");
             sb.AppendLine(".summary-cards { display: flex; gap: 10px; flex-wrap: wrap; }");
-            sb.AppendLine(".card { padding: 4px 12px; border-radius: 4px; font-size: 0.85em; background: #1976D2; color: #fff; }");
+            sb.AppendLine($".card {{ padding: 4px 12px; border-radius: 4px; font-size: 0.85em; background: {t.CardStrategyBg}; color: {t.SyntaxDefault}; }}");
+            sb.AppendLine(".page { display: flex; flex-direction: column; height: 100vh; }");
+            sb.AppendLine(".table-wrap { flex: 1; overflow: auto; }");
             sb.AppendLine("table { border-collapse: collapse; width: 100%; }");
-            sb.AppendLine("td { padding: 1px 6px; white-space: pre; vertical-align: top; border-bottom: 1px solid #2a2a2a; }");
-            sb.AppendLine(".ln { color: #858585; text-align: right; user-select: none; min-width: 40px; border-right: 1px solid #3c3c3c; }");
-            sb.AppendLine(".cov { text-align: right; min-width: 60px; border-right: 1px solid #3c3c3c; font-size: 0.8em; color: #888; }");
+            sb.AppendLine($"td {{ padding: 1px 6px; white-space: pre; vertical-align: top; border-bottom: 1px solid {t.RowBorder}; }}");
+            sb.AppendLine($".ln {{ color: {t.GutterFg}; text-align: right; user-select: none; min-width: 40px; border-right: 1px solid {t.GutterBorder}; }}");
+            sb.AppendLine($".cov {{ text-align: right; min-width: 60px; border-right: 1px solid {t.GutterBorder}; color: {t.SyntaxDefault}; }}");
             sb.AppendLine(".src { }");
-            sb.AppendLine("tr.covered { background-color: #1a3a1a; }");
-            sb.AppendLine("tr.uncovered { background-color: #3a1a1a; }");
-            sb.AppendLine("tr.neutral { background-color: transparent; }");
-            sb.AppendLine("thead td { position: sticky; top: 0; z-index: 1; background: #252526; }");
+            sb.AppendLine($"tr.covered td {{ background-color: {t.CoveredBg}; }}");
+            sb.AppendLine($"tr.uncovered td {{ background-color: {t.UncoveredBg}; }}");
+            sb.AppendLine("tr.neutral td { background-color: transparent; }");
+            sb.AppendLine($"thead td {{ position: sticky; top: 0; z-index: 1; background: {t.StickyHeaderBg}; }}");
             sb.AppendLine("</style>");
             sb.AppendLine("</head>");
             sb.AppendLine("<body>");
+            sb.AppendLine("<div class=\"page\">");
             sb.AppendLine("<div class=\"header\">");
             sb.AppendLine($"<h1>{HtmlEncode(fileDetail.FilePath)}</h1>");
             sb.AppendLine("<div class=\"summary-cards\">");
@@ -103,10 +138,10 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             }
             sb.AppendLine("</div>");
             sb.AppendLine("</div>");
+            sb.AppendLine("<div class=\"table-wrap\">");
             sb.AppendLine("<table>");
 
-            // Sticky header row for complexity columns
-            sb.Append("<thead><tr style=\"color:#888;font-size:0.8em;\">");
+            sb.Append($"<thead><tr style=\"color:{t.SyntaxDefault};font-size:{t.HeaderFontSize};\">");
             sb.Append("<td class=\"ln\">#</td>");
             foreach (var name in strategyNames)
                 sb.Append($"<td class=\"cov\">{HtmlEncode(name)}</td>");
@@ -124,11 +159,15 @@ namespace ComplexityCoverage.Infrastructure.Reporting
                     var display = w > 0 ? w.ToString("F2", CultureInfo.InvariantCulture) : "";
                     sb.Append($"<td class=\"cov\">{display}</td>");
                 }
-                sb.AppendLine($"<td class=\"src\">{HtmlEncode(line.RawText)}</td></tr>");
+
+                var srcHtml = highlightedLines.TryGetValue(line.LineNumber, out var hl) ? hl : HtmlEncode(line.RawText);
+                sb.AppendLine($"<td class=\"src\">{srcHtml}</td></tr>");
             }
 
             sb.AppendLine("</tbody>");
             sb.AppendLine("</table>");
+            sb.AppendLine("</div>"); // .table-wrap
+            sb.AppendLine("</div>"); // .page
             sb.AppendLine("</body>");
             sb.AppendLine("</html>");
             return sb.ToString();

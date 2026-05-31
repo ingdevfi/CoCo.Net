@@ -34,4 +34,12 @@
     <ProjectReference Include="..\ComplexityCoverage.Infrastructure\ComplexityCoverage.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Copy theme files to output so users can edit them next to the binary -->
+    <Content Include="themes\**\*.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <Link>themes\%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
 </Project>
