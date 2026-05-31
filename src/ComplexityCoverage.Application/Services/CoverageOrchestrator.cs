@@ -86,18 +86,18 @@ namespace ComplexityCoverage.Application.Services
             return null;
         }
 
-        async Task<IEnumerable<SourceFile>?> DiscoverFilesAsync(string solutionDir)
+        async Task<IReadOnlyList<SourceFile>?> DiscoverFilesAsync(string solutionDir)
         {
             _logger?.Information($"Discovering source files in: {solutionDir}");
-            var sourceFiles = await _fileDiscoveryService.DiscoverSourceFilesAsync(solutionDir);
+            var sourceFiles = (await _fileDiscoveryService.DiscoverSourceFilesAsync(solutionDir)).ToList();
 
-            if (!sourceFiles.Any())
+            if (sourceFiles.Count == 0)
             {
                 _logger?.Warning("No source files found");
                 return null;
             }
 
-            _logger?.Information($"Found {sourceFiles.Count()} source files");
+            _logger?.Information($"Found {sourceFiles.Count} source files");
             return sourceFiles;
         }
 
@@ -119,7 +119,7 @@ namespace ComplexityCoverage.Application.Services
         }
 
         (List<FileCoverageResult> FileResults, List<FileWeightDetails> WeightDetails, Dictionary<string, double> OverallByStrategy, List<FileSourceDetails> SourceDetails) ProcessFiles(
-            IEnumerable<SourceFile> sourceFiles, CoverageMap coverageMap)
+            IReadOnlyList<SourceFile> sourceFiles, CoverageMap coverageMap)
         {
             var fileResultsBag = new ConcurrentBag<FileCoverageResult>();
             var fileWeightDetailsBag = new ConcurrentBag<FileWeightDetails>();
@@ -137,7 +137,7 @@ namespace ComplexityCoverage.Application.Services
                 totalWeightByStrategy[name] = 0;
             }
 
-            _logger?.Information($"Processing {sourceFiles.Count()} files with {_strategies.Count} strategies...");
+            _logger?.Information($"Processing {sourceFiles.Count} files with {_strategies.Count} strategies...");
             var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount };
 
             Parallel.ForEach(sourceFiles, parallelOptions, file =>
@@ -234,14 +234,17 @@ namespace ComplexityCoverage.Application.Services
                 lineWeightsByStrategy[name] = lineWeights;
             }
 
+            // Pre-index strategy names to avoid a ToDictionary allocation per line
+            var strategyNames = _strategies.Select(s => s.Name).ToArray();
+
             var lineSourceDetails = new List<LineSourceDetail>(file.Lines.Count);
             for (int i = 0; i < file.Lines.Count; i++)
             {
                 var loc = file.Lines[i];
                 bool? isCoveredLine = lineCoverage != null && lineCoverage.TryGetValue(loc.LineNumber, out var cov) ? cov : null;
-                var lineWeights = _strategies.ToDictionary(
-                    s => s.Name,
-                    s => (lineWeightsByStrategy.TryGetValue(s.Name, out var arr) ? arr[i] : 0.0));
+                var lineWeights = new Dictionary<string, double>(strategyNames.Length);
+                for (int j = 0; j < strategyNames.Length; j++)
+                    lineWeights[strategyNames[j]] = lineWeightsByStrategy.TryGetValue(strategyNames[j], out var arr) ? arr[i] : 0.0;
                 lineSourceDetails.Add(new LineSourceDetail(loc.LineNumber, loc.RawText, isCoveredLine, lineWeights));
             }
 

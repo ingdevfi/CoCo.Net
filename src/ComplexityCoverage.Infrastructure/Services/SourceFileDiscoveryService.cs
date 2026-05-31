@@ -41,15 +41,9 @@ namespace ComplexityCoverage.Infrastructure.Services
                 foreach (var file in Directory.EnumerateFiles(directory, "*.*", SearchOption.AllDirectories))
                 {
                     if (!extensionSet.Contains(Path.GetExtension(file)))
-                    {
                         continue;
-                    }
-
                     if (IsExcluded(directory, file))
-                    {
                         continue;
-                    }
-
                     filePaths.Add(file);
                 }
             }
@@ -62,29 +56,20 @@ namespace ComplexityCoverage.Infrastructure.Services
                 await Console.Error.WriteLineAsync($"[Warning] Access denied to directory {directory}");
             }
 
-            // Read files concurrently; I/O-bound work benefits from parallel reads
-            var readTasks = filePaths.Select(TryReadSourceFileAsync);
+            // Read files concurrently but bounded to avoid exhausting the thread pool / file handles
+            // on very large repos (e.g. 2000+ source files).
+            const int maxConcurrency = 64;
+            using var semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
+
+            var readTasks = filePaths.Select(async path =>
+            {
+                await semaphore.WaitAsync();
+                try { return await TryReadSourceFileAsync(path); }
+                finally { semaphore.Release(); }
+            });
+
             var sources = await Task.WhenAll(readTasks);
-
-            return [.. sources.Where(source => source != null).Select(source => source!)];
-        }
-
-        private static async Task<IEnumerable<string>> EnumerateFilesForExtensionAsync(string directory, string ext)
-        {
-            try
-            {
-                return Directory.EnumerateFiles(directory, $"*{ext}", SearchOption.AllDirectories);
-            }
-            catch (IOException ex)
-            {
-                await Console.Error.WriteLineAsync($"[Warning] Cannot enumerate directory {directory} for extension {ext}: {ex.Message}");
-                return Array.Empty<string>();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                await Console.Error.WriteLineAsync($"[Warning] Access denied to directory {directory}");
-                return Array.Empty<string>();
-            }
+            return [.. sources.Where(s => s != null).Select(s => s!)];
         }
 
         private bool IsExcluded(string rootDirectory, string filePath)

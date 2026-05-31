@@ -58,7 +58,7 @@ namespace ComplexityCoverage.Domain.Complexity
     {
         private readonly IComplexityStrategy _halsteadStrategy = halsteadStrategy ?? throw new ArgumentNullException(nameof(halsteadStrategy));
         private readonly IComplexityStrategy _mccabeStrategy = mccabeStrategy ?? throw new ArgumentNullException(nameof(mccabeStrategy));
-        private readonly ConcurrentDictionary<SyntaxTree, Dictionary<MethodDeclarationSyntax, double>> _methodMICache = new();
+        private readonly ConcurrentDictionary<SyntaxTree, ConcurrentDictionary<MethodDeclarationSyntax, double>> _methodMICache = new();
         private readonly ConcurrentDictionary<SyntaxTree, IReadOnlyList<MethodSpan>> _methodSpanCache = new();
 
         protected override double CalculateLineWeight(int lineNumber, SyntaxNode root, SyntaxTree tree)
@@ -69,14 +69,8 @@ namespace ComplexityCoverage.Domain.Complexity
                 return 0.0;
             }
 
-            var miCache = _methodMICache.GetOrAdd(tree, _ => []);
-            if (!miCache.TryGetValue(containingMethod, out var mi))
-            {
-                mi = ComputeMethodMI(containingMethod, root, tree);
-                miCache[containingMethod] = mi;
-            }
-
-            return mi;
+            var miCache = _methodMICache.GetOrAdd(tree, _ => new ConcurrentDictionary<MethodDeclarationSyntax, double>());
+            return miCache.GetOrAdd(containingMethod, m => ComputeMethodMI(m, root, tree));
         }
 
         private double ComputeMethodMI(MethodDeclarationSyntax method, SyntaxNode root, SyntaxTree tree)

@@ -78,7 +78,7 @@ namespace ComplexityCoverage.Domain.Complexity
     /// </summary>
     public class McCabeComplexityStrategy : AbstractComplexityStrategy
     {
-        private readonly ConcurrentDictionary<SyntaxTree, Dictionary<MethodDeclarationSyntax, double>> _treeComplexityCache = new();
+        private readonly ConcurrentDictionary<SyntaxTree, ConcurrentDictionary<MethodDeclarationSyntax, double>> _treeComplexityCache = new();
         private readonly ConcurrentDictionary<SyntaxTree, IReadOnlyList<MethodSpan>> _methodSpanCache = new();
 
         public McCabeComplexityStrategy() : base(new WrappingSyntaxTreeCache())
@@ -88,7 +88,7 @@ namespace ComplexityCoverage.Domain.Complexity
         protected override double CalculateLineWeight(int lineNumber, SyntaxNode root, SyntaxTree tree)
         {
             // Per-tree cache keeps method complexities isolated per file and safe under parallel execution
-            var methodComplexityCache = _treeComplexityCache.GetOrAdd(tree, _ => []);
+            var methodComplexityCache = _treeComplexityCache.GetOrAdd(tree, _ => new ConcurrentDictionary<MethodDeclarationSyntax, double>());
 
             // Find the method containing this line
             var containingMethod = FindMethodContainingLine(lineNumber, root, tree);
@@ -99,15 +99,7 @@ namespace ComplexityCoverage.Domain.Complexity
                 return 0.0;
             }
 
-            // Check cache
-            if (!methodComplexityCache.TryGetValue(containingMethod, out var methodComplexity))
-            {
-                // Calculate method complexity using McCabe formula
-                methodComplexity = CalculateMcCabeComplexity(containingMethod);
-                methodComplexityCache[containingMethod] = methodComplexity;
-            }
-
-            return methodComplexity;
+            return methodComplexityCache.GetOrAdd(containingMethod, m => CalculateMcCabeComplexity(m));
         }
 
         /// <summary>

@@ -53,46 +53,35 @@ namespace ComplexityCoverage.Domain.Complexity
         {
             var lineWeights = new Dictionary<int, double>();
 
-            // Seed every line that belongs to a method body with base weight 1.0.
-            // Lines outside methods (class body, field declarations, …) stay absent
-            // from the map and will return 0 via the fallback in CalculateLineWeight.
-            foreach (var method in root.DescendantNodes().OfType<MethodDeclarationSyntax>()
-                .Concat<SyntaxNode>(root.DescendantNodes().OfType<ConstructorDeclarationSyntax>())
-                .Concat(root.DescendantNodes().OfType<LocalFunctionStatementSyntax>()))
-            {
-                var methodSpan = tree.GetLineSpan(method.Span);
-                int mStart = methodSpan.StartLinePosition.Line + 1;
-                int mEnd   = methodSpan.EndLinePosition.Line + 1;
-                for (int line = mStart; line <= mEnd; line++)
-                    lineWeights.TryAdd(line, 1.0);
-            }
-
-            // Walk all nesting-contributing nodes once
+            // Single pass: seed method lines with 1.0 and accumulate nesting contributions.
+            // Lines outside methods stay absent and return 0 via the fallback.
             foreach (var node in root.DescendantNodes())
             {
-                int contribution = GetNestingWeight(node);
-                if (contribution == 0)
+                // Seed method/constructor/local-function lines with base weight 1.0
+                if (node is MethodDeclarationSyntax or ConstructorDeclarationSyntax or LocalFunctionStatementSyntax)
                 {
+                    var methodSpan = tree.GetLineSpan(node.Span);
+                    int mStart = methodSpan.StartLinePosition.Line + 1;
+                    int mEnd   = methodSpan.EndLinePosition.Line + 1;
+                    for (int line = mStart; line <= mEnd; line++)
+                        lineWeights.TryAdd(line, 1.0);
                     continue;
                 }
 
-                // Get the line span of the node's body/block
+                int contribution = GetNestingWeight(node);
+                if (contribution == 0)
+                    continue;
+
                 var lineSpan = tree.GetLineSpan(node.Span);
                 int startLine = lineSpan.StartLinePosition.Line + 1;
-                int endLine = lineSpan.EndLinePosition.Line + 1;
+                int endLine   = lineSpan.EndLinePosition.Line + 1;
 
-                // Add contribution to all lines within this nesting node
                 for (int line = startLine; line <= endLine; line++)
                 {
                     if (!lineWeights.TryGetValue(line, out var current))
-                    {
-                        // Line is outside any method — store nesting contribution only (no base)
                         lineWeights[line] = contribution;
-                    }
                     else
-                    {
                         lineWeights[line] = current + contribution;
-                    }
                 }
             }
 

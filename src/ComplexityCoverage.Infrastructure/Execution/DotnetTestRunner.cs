@@ -71,7 +71,7 @@ namespace ComplexityCoverage.Infrastructure.Execution
                 }
                 catch (OperationCanceledException)
                 {
-                    process.Kill();
+                    process.Kill(entireProcessTree: true);
                     throw new TimeoutException($"dotnet test did not complete within {timeout}");
                 }
 
