@@ -4,8 +4,7 @@
 
 # CoCo.Net
 
-Not all code lines matter the same, so why computing code coverage as a simple percentage of covered code.
-Calculate **complexity-weighted test coverage** for .NET projects. Instead of treating all code equally, weight coverage by complexity so that complex business logic gets appropriate emphasis.
+Not all lines of code contribute equally to application stability, which means relying solely on simple line-count coverage is insufficient. CoCo.Net calculates **complexity-weighted test coverage** for your .NET projects. Instead of treating every line equally, we prioritize testing efforts by complexity, ensuring that critical business logic—the areas most prone to failure—receives the appropriate level of emphasis.
 
 ## Quick Start
 
@@ -49,6 +48,28 @@ dotnet build
 
 ### Basic Usage
 
+> ✅ **Recommended workflow — pass an existing coverage file**
+>
+> Running CoCo.Net without a coverage file forces it to **re-execute your entire test suite** at analysis time.
+> This has two drawbacks:
+> - **It takes time** — depending on suite size, this can add minutes to every run.
+> - **It can fail** — environment differences, locked files, missing dependencies, or flaky tests may
+>   cause the test run to abort and produce no report at all.
+>
+> The safest and fastest approach is to **generate the coverage file once** as part of your normal
+> CI / test step, then pass it directly with `--coverage-file`.
+> CoCo.Net will skip the test run entirely and use the existing data.
+>
+> ```bash
+> # Step 1 — run tests and produce a Cobertura file (once, in your CI pipeline or test run)
+> dotnet test Solution.sln --collect:"XPlat Code Coverage" --results-directory ./coverage
+>
+> # Step 2 — analyse without re-running tests
+> complexity-coverage \
+>   --solution Solution.sln \
+>   --coverage-file ./coverage/<guid>/coverage.cobertura.xml
+> ```
+
 #### As a Global Tool
 
 ```bash
@@ -67,7 +88,7 @@ complexity-coverage \
   --test-project path/to/Tests.csproj
 ```
 
-Using an existing coverage file (skips test execution):
+Using an existing coverage file **(recommended — skips test execution entirely)**:
 
 ```bash
 complexity-coverage \
@@ -96,38 +117,6 @@ dotnet run --project src/ComplexityCoverage.Cli -- \
 - `--coverage-format`: Coverage file format: `cobertura` (default), `opencover` (auto-detected if omitted)
 - `--theme`: Theme name or path — see [Themes](#themes) (default: `dark-monokai`)
 - `--config`: Path to a JSON config file — see [Configuration File](#configuration-file) (default: `coco.config.json` in current directory)
-
-### Example Output
-
-```
-Starting complexity coverage analysis...
-Solution: /path/to/Solution.sln
-Test Target: all test projects in solution
-Output Mode: html
-Output: coverage-report.html
-Complexity Strategy: mi
-Timeout: 00:15:00
-
-Found 42 source files
-Running dotnet test...
-Analysis completed successfully!
-
-Overall Line Coverage: 82.15%
-Overall MI Coverage: 87.34%
-
-File Results:
-────────────────────────────────────────────────────────────────────────────
-  src/MyService.cs
-	Line Coverage: 95.23% (40/42 lines)
-	Weighted Coverage (mi): 91.50%
-  src/Utils.cs
-	Line Coverage: 100.00% (10/10 lines)
-	Weighted Coverage (mi): 100.00%
-────────────────────────────────────────────────────────────────────────────
-
-Generated in: 4.2s | 42 files | 3,210 lines
-Report saved to: coverage-report.html
-```
 
 ## Output Modes
 
@@ -241,6 +230,9 @@ When using `--coverage-file`, the format is auto-detected from the file extensio
 > Always use a **Cobertura** or **OpenCover** file for coverage metrics.
 
 ### Generating Coverage Files
+
+> 💡 Generate the coverage file **once** in your test pipeline and reuse it with `--coverage-file`.
+> This avoids re-running tests on every analysis and eliminates the risk of environment-related failures.
 
 #### Cobertura (recommended)
 
@@ -460,7 +452,20 @@ You can freely edit the JSON files or create new ones. All colour values are sta
 
 ### "Tests failed with exit code 1"
 
-**Solution**: Run tests manually to diagnose:
+**Root cause**: CoCo.Net re-ran your test suite and it failed — due to environment differences, locked files, or flaky tests.
+
+**Best solution**: Generate the coverage file independently and pass it with `--coverage-file` so CoCo.Net never needs to run tests:
+```bash
+dotnet test path/to/Tests.csproj \
+  --collect:"XPlat Code Coverage" \
+  --results-directory ./coverage
+
+complexity-coverage \
+  --solution Solution.sln \
+  --coverage-file ./coverage/<guid>/coverage.cobertura.xml
+```
+
+**Alternatively**, run tests manually to diagnose the failure:
 ```bash
 dotnet test path/to/Tests.csproj
 ```
