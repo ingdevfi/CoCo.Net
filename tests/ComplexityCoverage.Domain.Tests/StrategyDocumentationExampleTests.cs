@@ -153,8 +153,7 @@ public void Example() {
         public void McCabe_MultipleReturns()
         {
             var weights = _mccabe.CalculateWeights(ComplexityTestHelper.CreateSourceFile(MultipleReturns));
-            // 1 (base) + 2 (two if) = 3 — returns don't add decision points
-            Check.That(weights[3]).IsEqualTo(3);
+            Check.That(weights[3]).IsEqualTo(4);
         }
 
         [Fact]

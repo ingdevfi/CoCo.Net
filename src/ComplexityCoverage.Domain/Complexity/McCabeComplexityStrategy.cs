@@ -173,10 +173,36 @@ namespace ComplexityCoverage.Domain.Complexity
                             decisionPoints++;
                         break;
                     }
+
+                    case ReturnStatementSyntax resturnStatement:
+                        if (!IsInIfOrElseStatement(resturnStatement))
+                        { 
+                            decisionPoints++; 
+                        }
+                        break;
+
+                    case ThrowExpressionSyntax throwExpression:
+                        if (!IsInIfOrElseStatement(throwExpression))
+                        { 
+                            decisionPoints++; 
+                        }
+                        break;
                 }
             }
 
             return 1.0 + decisionPoints;
+        }
+
+
+        private static bool IsInIfOrElseStatement(SyntaxNode node)
+        {
+            var parent = node.Parent;
+            if (parent is BlockSyntax) // if it is a if/else followed by {}
+            {
+                parent = parent.Parent;
+            }
+
+            return parent is IfStatementSyntax;
         }
 
         /// <summary>
