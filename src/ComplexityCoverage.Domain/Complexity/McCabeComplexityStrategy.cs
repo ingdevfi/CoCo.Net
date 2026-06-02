@@ -1,81 +1,10 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using ComplexityCoverage.Domain.Interfaces;
 using System.Collections.Concurrent;
 
 namespace ComplexityCoverage.Domain.Complexity
 {
-    /// <summary>
-    /// Custom syntax tree cache that wraps code in a class if no methods are found.
-    /// This is used by McCabeComplexityStrategy to handle test code snippets that don't have containing classes.
-    /// </summary>
-    internal class WrappingSyntaxTreeCache : ISyntaxTreeCache
-    {
-        private readonly ConcurrentDictionary<string, object> _cache = new();
-
-        public object GetOrCreateSyntaxTree(string content)
-        {
-            return _cache.GetOrAdd(content, static key =>
-            {
-                // Try to parse as-is
-                var tree = CSharpSyntaxTree.ParseText(key);
-                var root = (CompilationUnitSyntax)tree.GetRoot();
-                var methods = root.DescendantNodes().OfType<MethodDeclarationSyntax>().ToList();
-
-                // If no methods found, wrap in a class
-                if (methods.Count == 0)
-                {
-                    var wrappedCode = $"public class TestClass {{\n{key}\n}}";
-                    tree = CSharpSyntaxTree.ParseText(wrappedCode);
-                    root = (CompilationUnitSyntax)tree.GetRoot();
-                }
-
-                return new CachedSyntaxTreeData(tree, root);
-            });
-        }
-
-        public void Clear()
-        {
-            _cache.Clear();
-        }
-    }
-
-    /// <summary>
-    /// Calculates cyclomatic complexity at the method level using McCabe's formula.
-    /// 
-    /// THEORETICAL BACKGROUND:
-    /// McCabe's cyclomatic complexity is formally defined as: M = E - N + 2P
-    /// where:
-    ///   E = number of edges in the control flow graph
-    ///   N = number of nodes in the control flow graph
-    ///   P = number of connected components (always 1 for a single method)
-    /// 
-    /// Therefore for a method: M = E - N + 2
-    /// 
-    /// Equivalent practical formula: M = 1 + number of decision points
-    /// where decision points are: if, switch cases, loops, ternary operators, logical operators (&&, ||)
-    /// 
-    /// Classic Definition: Complexity represents the minimum number of independent paths through a method.
-    /// Higher complexity indicates more decision points and harder-to-test code.
-    /// 
-    /// IMPLEMENTATION APPROACH (METHOD-LEVEL):
-    /// All lines within a method share the same complexity value calculated for the entire method.
-    /// We count all decision points (branches, loops, operators) within the method.
-    /// 
-    /// ALGORITHM:
-    /// 1. Find the method containing the line
-    /// 2. Count all decision points within that method
-    /// 3. Apply formula: CC = 1 + decision_points
-    /// 4. Cache result per method
-    /// 5. Return cached complexity for all lines in the method
-    /// 
-    /// ADVANTAGES:
-    /// - Uses the proper McCabe formula (E - N + 2P is equivalent to 1 + decision_points)
-    /// - Method-level metric (all lines share complexity)
-    /// - Each method's complexity reflects its number of independent paths
-    /// - Aligns with industry standards (Visual Studio, SonarQube)
-    /// </summary>
     public class McCabeComplexityStrategy : AbstractComplexityStrategy
     {
         private readonly ConcurrentDictionary<SyntaxTree, ConcurrentDictionary<MethodDeclarationSyntax, double>> _treeComplexityCache = new();
@@ -173,20 +102,6 @@ namespace ComplexityCoverage.Domain.Complexity
                             decisionPoints++;
                         break;
                     }
-
-                    case ReturnStatementSyntax resturnStatement:
-                        if (!IsInIfOrElseStatement(resturnStatement))
-                        { 
-                            decisionPoints++; 
-                        }
-                        break;
-
-                    case ThrowExpressionSyntax throwExpression:
-                        if (!IsInIfOrElseStatement(throwExpression))
-                        { 
-                            decisionPoints++; 
-                        }
-                        break;
                 }
             }
 
