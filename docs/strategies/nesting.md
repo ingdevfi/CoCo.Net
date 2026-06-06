@@ -3,87 +3,87 @@
 ## Formula
 
 ```
-Poids = 1 + profondeur_d_imbrication + nombre_operateurs_logiques
+Weight = 1 + nesting_depth + logical_operators_count
 ```
 
-où :
-- **1** = poids de base (toute ligne a au minimum ce poids)
-- **profondeur_d_imbrication** = nombre d'ancêtres de flux de contrôle (à quelle profondeur la ligne est imbriquée)
-- **nombre_operateurs_logiques** = +1 pour chaque `&&` ou `||` dans les conditions parentes
+where:
+- **1** = base weight (every line has at least this weight)
+- **nesting_depth** = number of control flow ancestors (at what depth the line is nested)
+- **logical_operators_count** = +1 for each `&&` or `||` in parent conditions
 
-## Choix d'implémentation
+## Implementation Choice
 
-### Niveau ligne
+### Line-level
 
-Contrairement à McCabe (méthode-level), le Nesting est calculé **par ligne**. Chaque ligne reçoit un poids basé sur sa propre profondeur dans l'arbre syntaxique.
+Unlike McCabe (method-level), Nesting is calculated **per line**. Each line receives a weight based on its own depth in the syntax tree.
 
-### Calcul de la profondeur
+### Depth Calculation
 
-Pour chaque nœud syntaxique présent sur une ligne, l'algorithme remonte dans les ancêtres et additionne les contributions de chaque nœud de contrôle de flux rencontré. Le poids maximum parmi tous les nœuds de la ligne est retenu.
+For each syntax node present on a line, the algorithm climbs up ancestors and adds contributions from each control flow node encountered. The maximum weight among all nodes on the line is retained.
 
-### Contributions par construction
+### Contributions by Construction
 
 | Construction | Contribution |
 |---|---|
-| `if` | +1 + nombre de `&&`/`||` dans la condition |
+| `if` | +1 + number of `&&`/`||` in condition |
 | `while`, `for`, `foreach` | +1 |
-| Opérateur ternaire `?:` | +1 |
-| `switch` section (`case`/`default`) | +N (nombre total de sections du `switch`) |
+| Ternary operator `?:` | +1 |
+| `switch` section (`case`/`default`) | +N (total number of switch sections) |
 
-### Constructions non comptées
+### Untracked Constructions
 
-| Construction | Raison |
+| Construction | Reason |
 |---|---|
-| `else` | Couvert par le `if` parent — même profondeur |
-| `try` / `catch` / `finally` | Pas considéré comme de l'imbrication de flux de contrôle |
-| `return` | Simple instruction, pas un nœud de contrôle |
+| `else` | Covered by parent `if` — same depth |
+| `try` / `catch` / `finally` | Not considered control flow nesting |
+| `return` | Simple statement, not a control node |
 
-### Avantages par rapport à McCabe
+### Advantages over McCabe
 
-- Corrèle directement avec les problèmes de lisibilité
-- Pénalise le code profondément imbriqué (plus difficile à maintenir)
-- Formule simple et intuitive
-- Détecte les "pyramides de doom"
+- Directly correlates with readability problems
+- Penalizes deeply nested code (harder to maintain)
+- Simple and intuitive formula
+- Detects "pyramids of doom"
 
 ### Limitations
-- Ne compte pas le nombre total de chemins à travers la fonction
-- Les `switch` avec beaucoup de `case` peuvent être sur-pénalisés
+- Does not count total paths through function
+- `switch` with many `case` can be over-penalized
 
-## Exemples
+## Examples
 
 ### Simple `if`
 
 ```csharp
 public void Example() {
 	if (x > 0) {
-		var a = 1;   // ← ligne mesurée
+		var a = 1;   // ← measured line
 	}
 }
 ```
 
-**Poids de la ligne `var a = 1` : 2** (1 base + 1 profondeur `if`)
+**Weight of `var a = 1` line: 2** (1 base + 1 `if` depth)
 
 ### `if` / `else`
 
 ```csharp
 public void Example() {
 	if (x > 0) {
-		var a = 1;   // poids: 2
+		var a = 1;   // weight: 2
 	} else {
-		var b = 2;   // poids: 2
+		var b = 2;   // weight: 2
 	}
 }
 ```
 
-**Poids : 2** pour les deux branches (même profondeur d'imbrication)
+**Weight: 2** for both branches (same nesting depth)
 
-### `if` / `else` imbriqués
+### Nested `if` / `else`
 
 ```csharp
 public void Example() {
 	if (x > 0) {
 		if (y > 0) {
-			var a = 1;   // ← ligne mesurée
+			var a = 1;   // ← measured line
 		} else {
 			var b = 2;
 		}
@@ -93,29 +93,29 @@ public void Example() {
 }
 ```
 
-**Poids de `var a = 1` : 3** (1 base + 2 niveaux d'imbrication)
+**Weight of `var a = 1`: 3** (1 base + 2 levels of nesting)
 
-### Conditions multiples dans un `if`
+### Multiple conditions in an `if`
 
 ```csharp
 public void Example() {
 	if (x > 0 && y > 0 || z == 1) {
-		var a = 1;   // ← ligne mesurée
+		var a = 1;   // ← measured line
 	}
 }
 ```
 
-**Poids : 4** (1 base + 1 `if` + 1 `&&` + 1 `||`)
+**Weight: 4** (1 base + 1 `if` + 1 `&&` + 1 `||`)
 
-### Opérateur ternaire
+### Ternary operator
 
 ```csharp
 public void Example() {
-	var result = x > 0 ? 1 : 0;   // ← ligne mesurée
+	var result = x > 0 ? 1 : 0;   // ← measured line
 }
 ```
 
-**Poids : 2** (1 base + 1 ternaire)
+**Weight: 2** (1 base + 1 ternary)
 
 ### `switch`
 
@@ -123,7 +123,7 @@ public void Example() {
 public void Example() {
 	switch (x) {
 		case 1:
-			var a = 1;   // ← ligne mesurée
+			var a = 1;   // ← measured line
 			break;
 		case 2:
 			var b = 2;
@@ -135,16 +135,16 @@ public void Example() {
 }
 ```
 
-**Poids de `var a = 1` : 4** (1 base + 3 sections dans le switch)
+**Weight of `var a = 1`: 4** (1 base + 3 sections in switch)
 
-> Note : le Nesting compte le nombre total de sections du switch, pas juste la section courante. Un switch avec 5 cas pénalise plus qu'un switch avec 2 cas.
+> Note: Nesting counts total number of switch sections, not just current section. A switch with 5 cases penalizes more than a switch with 2 cases.
 
-### Méthode avec plusieurs `return`
+### Method with multiple `return`
 
 ```csharp
 public int Example() {
 	if (x > 10) {
-		return 1;   // ← ligne mesurée
+		return 1;   // ← measured line
 	}
 	if (x > 5) {
 		return 2;
@@ -153,14 +153,14 @@ public int Example() {
 }
 ```
 
-**Poids de `return 1` : 2** (1 base + 1 profondeur du premier `if`)
+**Weight of `return 1`: 2** (1 base + 1 depth from first `if`)
 
 ### `try` / `catch` / `finally`
 
 ```csharp
 public void Example() {
 	try {
-		var a = DoSomething();   // ← ligne mesurée
+		var a = DoSomething();   // ← measured line
 	} catch (Exception ex) {
 		Log(ex);
 	} finally {
@@ -169,11 +169,11 @@ public void Example() {
 }
 ```
 
-**Poids : 1** (1 base — `try`/`catch`/`finally` n'ajoutent pas de profondeur d'imbrication)
+**Weight: 1** (1 base — `try`/`catch`/`finally` don't add nesting depth)
 
-## Quand utiliser Nesting
+## When to Use Nesting
 
-- Focus sur la lisibilité et la maintenabilité du code
-- Détection des "pyramides de doom" (imbrications profondes)
-- Complémentaire à McCabe pour identifier du code difficile à lire mais pas nécessairement complexe en termes de chemins
-- Revues de code orientées structure
+- Focus on code readability and maintainability
+- Detection of "pyramids of doom" (deep nesting)
+- Complementary to McCabe for identifying code that's hard to read but not necessarily complex in terms of paths
+- Structure-oriented code reviews

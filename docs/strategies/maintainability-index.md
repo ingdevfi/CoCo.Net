@@ -6,88 +6,88 @@
 MI = 171 - 5.2 × ln(HALVOL) - 0.23 × CYCLO - 10.2 × ln(SLOC)
 ```
 
-Normalisation : `MI' = max(0, (MI × 100) / 171)`
+Normalization: `MI' = max(0, (MI × 100) / 171)`
 
-Inversion pour le poids : `weight = 100 - MI'`
+Inversion for weight: `weight = 100 - MI'`
 
-Résultat : 0–100, où un poids plus élevé = code plus difficile à maintenir.
+Result: 0–100, where higher weight = harder to maintain.
 
-## Composants
+## Components
 
-| Métrique | Niveau | Source |
+| Metric | Level | Source |
 |---|---|---|
-| **HALVOL** (Halstead Volume) | Ligne | Volume Halstead de la ligne spécifique |
-| **CYCLO** (Complexité cyclomatique) | Méthode | McCabe de la méthode contenant la ligne |
-| **SLOC** (Source Lines of Code) | Méthode | Lignes de code source (hors commentaires/blancs) |
+| **HALVOL** (Halstead Volume) | Line | Halstead volume of specific line |
+| **CYCLO** (Cyclomatic Complexity) | Method | McCabe of method containing the line |
+| **SLOC** (Source Lines of Code) | Method | Source lines (excluding comments/whitespace) |
 
-## Choix d'implémentation
+## Implementation Choice
 
-### Calcul par ligne (hybride)
+### Per-line Calculation (Hybrid)
 
-L'indice de maintenabilité est calculé **par ligne** en combinant :
-- Le **McCabe de la méthode** (partagé par toutes les lignes de la méthode) — reflète la complexité structurelle globale
-- Le **Halstead de la ligne** (propre à chaque ligne) — reflète la densité informationnelle locale
-- Le **SLOC de la méthode** (partagé) — reflète la taille
+Maintainability Index is calculated **per line** by combining:
+- **McCabe of the method** (shared by all method lines) — reflects overall structural complexity
+- **Halstead of the line** (line-specific) — reflects local information density
+- **SLOC of the method** (shared) — reflects size
 
-Cela produit un poids unique par ligne : les lignes avec plus d'opérateurs/opérandes au sein d'une méthode complexe reçoivent un poids plus élevé que les lignes simples de la même méthode.
+This produces a unique weight per line: lines with more operators/operands within a complex method receive higher weight than simple lines from the same method.
 
-### Pourquoi ce choix ?
+### Why This Choice?
 
-Une approche purement méthode-level (comme dans l'implémentation originale de Visual Studio) donne le même poids à toutes les lignes d'une méthode. En intégrant le Halstead par ligne, on obtient une granularité plus fine qui permet de :
-- Identifier les lignes les plus critiques au sein d'une méthode complexe
-- Pondérer la couverture de tests de manière plus précise
+A purely method-level approach (like in Visual Studio's original implementation) gives the same weight to all lines in a method. By integrating per-line Halstead, we achieve finer granularity that allows:
+- Identifying most critical lines within a complex method
+- More precise test coverage weighting
 
-### Cache McCabe par méthode
+### McCabe Caching by Method
 
-Un `ConcurrentDictionary<SyntaxTree, Dictionary<MethodDeclarationSyntax, double>>` cache la valeur McCabe par méthode pour éviter de recalculer à chaque ligne.
+A `ConcurrentDictionary<SyntaxTree, Dictionary<MethodDeclarationSyntax, double>>` caches McCabe value per method to avoid recalculating per line.
 
 ### WrappingSyntaxTreeCache
 
-Comme McCabe, MI utilise le `WrappingSyntaxTreeCache` pour gérer les snippets de code sans classe englobante.
+Like McCabe, MI uses `WrappingSyntaxTreeCache` to handle code snippets without enclosing class.
 
-### Gestion des valeurs limites
+### Boundary Value Handling
 
-- `HALVOL`, `CYCLO`, `SLOC` sont plafonnés à minimum 1 pour éviter `ln(0)`
-- Le poids final est borné dans `[0, 100]`
+- `HALVOL`, `CYCLO`, `SLOC` are floored at minimum 1 to avoid `ln(0)`
+- Final weight is bounded in `[0, 100]`
 
-### Interprétation du MI original
+### MI Original Interpretation
 
-| MI normalisé | Interprétation |
+| Normalized MI | Interpretation |
 |---|---|
-| 85–100 | Hautement maintenable (vert) |
-| 50–84 | Maintenable avec préoccupations (jaune) |
-| < 50 | Difficile à maintenir (rouge) |
+| 85–100 | Highly maintainable (green) |
+| 50–84 | Maintainable with concerns (yellow) |
+| < 50 | Hard to maintain (red) |
 
-Puisque le projet attend **poids élevé = complexité élevée**, le MI est inversé : `weight = 100 - MI'`.
+Since the project expects **high weight = high complexity**, MI is inverted: `weight = 100 - MI'`.
 
-## Exemples
+## Examples
 
 ### Simple `if`
 
 ```csharp
 public void Example() {
 	if (x > 0) {
-		var a = 1;   // ← ligne mesurée
+		var a = 1;   // ← measured line
 	}
 }
 ```
 
-Pour cette ligne :
-- **CYCLO** = 2 (méthode avec un `if`)
-- **HALVOL** = volume Halstead de `var a = 1;` ≈ 11.6
+For this line:
+- **CYCLO** = 2 (method with one `if`)
+- **HALVOL** = Halstead volume of `var a = 1;` ≈ 11.6
 - **SLOC** = 3
 
 MI = 171 - 5.2 × ln(11.6) - 0.23 × 2 - 10.2 × ln(3) ≈ 147.9
 MI' = max(0, 147.9 × 100 / 171) ≈ 86.5
 **Weight ≈ 13.5**
 
-### `if` / `else` imbriqués
+### Nested `if` / `else`
 
 ```csharp
 public void Example() {
 	if (x > 0) {
 		if (y > 0) {
-			var a = 1;   // ← ligne mesurée
+			var a = 1;   // ← measured line
 		} else {
 			var b = 2;
 		}
@@ -97,50 +97,50 @@ public void Example() {
 }
 ```
 
-Pour cette ligne :
-- **CYCLO** = 3 (méthode avec deux `if`)
-- **HALVOL** ≈ 11.6 (même assignment)
+For this line:
+- **CYCLO** = 3 (method with two `if`)
+- **HALVOL** ≈ 11.6 (same assignment)
 - **SLOC** = 9
 
-MI plus bas → **poids plus élevé** que l'exemple simple.
+Lower MI → **higher weight** than simple example.
 
-### Conditions multiples
+### Multiple Conditions
 
 ```csharp
 public void Example() {
-	if (x > 0 && y > 0 || z == 1) {   // ← ligne mesurée
+	if (x > 0 && y > 0 || z == 1) {   // ← measured line
 		var a = 1;
 	}
 }
 ```
 
-Pour la ligne du `if` :
+For the `if` line:
 - **CYCLO** = 4 (1 + if + && + ||)
-- **HALVOL** = élevé (beaucoup d'opérateurs et opérandes)
+- **HALVOL** = high (many operators and operands)
 - **SLOC** = 3
 
-La combinaison d'un McCabe élevé ET d'un Halstead élevé sur cette ligne produit un **poids significatif**.
+Combination of high McCabe AND high Halstead on this line produces **significant weight**.
 
-### Opérateur ternaire
+### Ternary operator
 
 ```csharp
 public void Example() {
-	var result = x > 0 ? 1 : 0;   // ← ligne mesurée
+	var result = x > 0 ? 1 : 0;   // ← measured line
 }
 ```
 
-- **CYCLO** = 2 (ternaire = 1 point de décision)
-- **HALVOL** ≈ 34.8 (vocabulaire riche)
+- **CYCLO** = 2 (ternary = 1 decision point)
+- **HALVOL** ≈ 34.8 (rich vocabulary)
 - **SLOC** = 1
 
-Le Halstead élevé de cette ligne unique compense le McCabe modéré.
+High Halstead of this single line compensates for moderate McCabe.
 
 ### `try` / `catch` / `finally`
 
 ```csharp
 public void Example() {
 	try {
-		var a = DoSomething();   // ← ligne mesurée
+		var a = DoSomething();   // ← measured line
 	} catch (Exception ex) {
 		Log(ex);
 	} finally {
@@ -149,23 +149,23 @@ public void Example() {
 }
 ```
 
-- **CYCLO** = 1 (try/catch ne sont pas des points de décision)
-- **HALVOL** ≈ 19.6 (appel de méthode + assignment)
+- **CYCLO** = 1 (try/catch are not decision points)
+- **HALVOL** ≈ 19.6 (method call + assignment)
 - **SLOC** = 7
 
-McCabe bas + Halstead modéré = **poids relativement bas** malgré la structure try/catch.
+Low McCabe + moderate Halstead = **relatively low weight** despite try/catch structure.
 
-## Quand utiliser MI
+## When to Use MI
 
-- Évaluation globale de la santé du code
-- Prédiction de l'effort de maintenance
-- Identification des zones problématiques
-- Combinaison des aspects structurels (McCabe) et informationnels (Halstead)
-- Comparaison avec les métriques Visual Studio / SonarQube
+- Overall code health evaluation
+- Maintenance effort prediction
+- Problem area identification
+- Combining structural (McCabe) and informational (Halstead) aspects
+- Comparison with Visual Studio / SonarQube metrics
 
 ## Limitations
 
-- Dépend de la précision des calculs Halstead Volume et McCabe
-- Le comptage SLOC peut varier selon le style et le formatage
-- La formule logarithmique peut produire des anomalies avec de très petites valeurs
-- Ne prend pas en compte la qualité de la documentation/lisibilité
+- Depends on Halstead Volume and McCabe calculation accuracy
+- SLOC counting may vary by style and formatting
+- Logarithmic formula may produce anomalies with very small values
+- Does not account for documentation/readability quality

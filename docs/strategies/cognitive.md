@@ -2,85 +2,86 @@
 
 ## Formula
 
-La complexité cognitive (Cognitive Complexity) est une mesure introduite par Sonar:copyright: pour quantifier la **difficulté à comprendre le flux de contrôle** d'une méthode, au-delà du simple comptage des chemins.
-Si vous voulez en savoir plus vous pouvez lire cette [documentation](https://www.sonarsource.com/docs/CognitiveComplexity.pdf).
-Nous nous en sommes inspiré, mais notre implémentation diffère de la leur. En effet dans notre imlémentation nous comptons aussi les `return` ou les `throw` selon certaines conditions car il peuvent eux aussi casser la lecture linéaire du code.
+Cognitive Complexity (Cognitive Complexity) is a measure introduced by Sonar© to quantify the **difficulty of understanding control flow** in a method, beyond simple path counting.
+
+For more information you can read this [documentation](https://www.sonarsource.com/docs/CognitiveComplexity.pdf).
+We drew inspiration from it, but our implementation differs from theirs. Indeed, in our implementation we also count `return` or `throw` under certain conditions because they can also break linear code reading.
 
 ```
-Cognitive Complexity = 1 (base) + Σ(incrément de chaque élément de contrôle) + Σ(incrément d'imbrication)
+Cognitive Complexity = 1 (base) + Σ(control element increment) + Σ(nesting increment)
 ```
 
-où :
-- **1 (base)** = toute méthode commence avec une complexité minimale
-- **incrément de chaque élément** = certaines constructions ajoutent directement de la complexité
-- **incrément d'imbrication** = chaque niveau d'imbrication multiplie les incréments de complexité par le facteur de nesting
+where:
+- **1 (base)** = every method starts with minimum complexity
+- **control element increment** = some constructions add complexity directly
+- **nesting increment** = each nesting level multiplies complexity increments by the nesting factor
 
-## Choix d'implémentation
+## Implementation Choice
 
-### Niveau méthode
+### Method-level
 
-Comme McCabe, Cognitive Complexity est calculée **au niveau méthode**. Toutes les lignes d'une méthode partagent la même valeur de complexité, qui représente la charge cognitive globale nécessaire pour comprendre la méthode.
+Like McCabe, Cognitive Complexity is calculated **at method level**. All lines in a method share the same complexity value, which represents overall cognitive load needed to understand the method.
 
-### Éléments qui augmentent la complexité directement (Annex B1)
+### Elements that increase complexity directly (Annex B1)
 
-| Construction | Incrément |
+| Construction | Increment |
 |---|---|
 | `if` | +1 |
 | `else if` | +1 |
-| `switch` (le constructeur lui-même) | +1 |
-| `case` / `default` (chaque branche) | +1 |
+| `switch` (the constructor itself) | +1 |
+| `case` / `default` (each branch) | +1 |
 | `for`, `while`, `do...while` | +1 |
 | `foreach` | +1 |
-| `break` ou `continue` (si pas le dernier de la boucle) | +1 |
-| Opérateurs logiques `&&` et `\|\|` dans un contexte de condition (transition d'opérateur) | +1 |
-| `catch` | ✗ **NE compte PAS** |
-| `try` | ✗ **NE compte PAS** |
-| `return` | si imbriqué |
-| `throw` | pas dans un catch et imbriqué  |
+| `break` or `continue` (if not last in loop) | +1 |
+| Logical operators `&&` and `\|\|` in condition context (operator transition) | +1 |
+| `catch` | ✗ **DOES NOT count** |
+| `try` | ✗ **DOES NOT count** |
+| `return` | if nested |
+| `throw` | not inside catch and nested  |
 
-### Multiplicateur d'imbrication (Annex B2 & B3)
+### Nesting Multiplier (Annex B2 & B3)
 
-Chaque construction de contrôle imbriquée à l'intérieur d'une autre augmente le facteur de nesting :
+Each control construction nested inside another increases the nesting factor:
 
-| Profondeur de nesting | Multiplicateur |
+| Nesting depth | Multiplier |
 |---|---|
-| Nesting 0 (toplevel de la méthode) | ×1 |
+| Nesting 0 (method top-level) | ×1 |
 | Nesting 1 | ×2 |
 | Nesting 2 | ×3 |
 | Nesting N | ×(N+1) |
 
-Chaque incrément structurel est multiplié par ce facteur. Par exemple, un `if` au nesting 0 ajoute +1, mais le même `if` au nesting 2 ajoute +3.
+Each structural increment is multiplied by this factor. For example, an `if` at nesting 0 adds +1, but the same `if` at nesting 2 adds +3.
 
-### Point clé : `catch` et `try` augmentent le nesting mais pas la complexité
+### Key Point: `catch` and `try` increase nesting but not complexity
 
-- `try` **n'augmente pas** le nesting
-- `catch` **augmente le nesting** pour les constructions qui s'y trouvent, mais **n'ajoute pas** de complexité elle-même
-- `finally` **n'augmente pas** le nesting
+- `try` **does not increase** nesting
+- `catch` **increases nesting** for constructions inside it, but **does not add** complexity itself
+- `finally` **does not increase** nesting
 
-Cela diffère de McCabe, où `try`/`catch`/`finally` sont ignorés complètement.
+This differs from McCabe, where `try`/`catch`/`finally` are ignored completely.
 
-### Séquences d'opérateurs logiques
+### Logical Operator Sequences
 
-Les opérateurs logiques `&&` et `||` sont comptés différemment selon le contexte :
+Logical operators `&&` and `||` are counted differently depending on context:
 
-- **Dans une condition (if, while, etc.)** : seules les **transitions** entre opérateurs différents sont comptées
-  - `a && b && c` = 0 transition, incrément = 0
-  - `a && b || c` = 1 transition (&&→||), incrément = 1
-  - `a && b || c && d` = 2 transitions, incrément = 2
+- **In a condition (if, while, etc.)**: only **transitions** between different operators are counted
+  - `a && b && c` = 0 transitions, increment = 0
+  - `a && b || c` = 1 transition (&&→||), increment = 1
+  - `a && b || c && d` = 2 transitions, increment = 2
 
-- **Dans une assignation ou autre contexte** : une séquence d'opérateurs logiques ajoute +1
-  - `var x = a || b || c;` = incrément = 1 (une séquence)
-  - `var x = a && b && c;` = incrément = 1 (une séquence)
+- **In an assignment or other context**: a sequence of logical operators adds +1
+  - `var x = a || b || c;` = increment = 1 (one sequence)
+  - `var x = a && b && c;` = increment = 1 (one sequence)
 
-### Cache par arbre syntaxique
+### Syntax Tree Caching
 
-Un `ConcurrentDictionary<SyntaxTree, Dictionary<MethodDeclarationSyntax, double>>` met en cache la complexité par méthode. Un second cache (`_methodSpanCache`) pré-calcule les spans de méthodes pour un lookup O(1) par ligne.
+A `ConcurrentDictionary<SyntaxTree, Dictionary<MethodDeclarationSyntax, double>>` caches complexity per method. A second cache (`_methodSpanCache`) pre-calculates method spans for O(1) lookup per line.
 
 ### WrappingSyntaxTreeCache
 
-Cognitive utilise le même cache spécial que McCabe pour envelopper le code dans une classe si aucune `MethodDeclarationSyntax` n'est trouvée, permettant de traiter des snippets de test.
+Cognitive uses the same special cache as McCabe to wrap code in a class if no `MethodDeclarationSyntax` is found, allowing processing of test snippets.
 
-## Exemples
+## Examples
 
 ### Simple `if`
 
@@ -92,9 +93,9 @@ public void Example() {
 }
 ```
 
-**Complexité : 1** (1 base + 1 `if` au nesting 0)
+**Complexity: 1** (1 base + 1 `if` at nesting 0)
 
-### `if` / `else` imbriqués
+### Nested `if` / `else`
 
 ```csharp
 public void Example() {
@@ -110,12 +111,12 @@ public void Example() {
 }
 ```
 
-**Complexité : 3**
-- 1 `if` externe au nesting 0 = +1
-- 1 `if` interne au nesting 1 = +2 (1 × multiplicateur 2)
-- **Total : 1 + 2 = 3**
+**Complexity: 3**
+- 1 external `if` at nesting 0 = +1
+- 1 internal `if` at nesting 1 = +2 (1 × multiplier 2)
+- **Total: 1 + 2 = 3**
 
-### Conditions multiples dans un `if`
+### Multiple conditions in an `if`
 
 ```csharp
 public void Example() {
@@ -125,10 +126,10 @@ public void Example() {
 }
 ```
 
-**Complexité : 2**
-- 1 `if` au nesting 0 = +1
-- Transition d'opérateur `&&` → `||` = +1 incrément
-- **Total : 1 + 1 = 2**
+**Complexity: 2**
+- 1 `if` at nesting 0 = +1
+- Operator transition `&&` → `||` = +1 increment
+- **Total: 1 + 1 = 2**
 
 ### `try` / `catch` / `finally`
 
@@ -144,13 +145,13 @@ public void Example() {
 }
 ```
 
-**Complexité : 0**
-- `try` n'ajoute rien et n'augmente pas le nesting
-- `catch` n'ajoute pas de complexité (augmente juste le nesting pour les instructions à l'intérieur)
-- `finally` n'ajoute rien
-- **Total : 0**
+**Complexity: 0**
+- `try` adds nothing and doesn't increase nesting
+- `catch` doesn't add complexity (just increases nesting for instructions inside)
+- `finally` adds nothing
+- **Total: 0**
 
-### Séquence d'opérateurs logiques en assignation
+### Logical operator sequence in assignment
 
 ```csharp
 public void Example() {
@@ -158,34 +159,33 @@ public void Example() {
 }
 ```
 
-**Complexité : 1**
-- Séquence d'opérateurs `||` dans une assignation = +1 incrément
-- **Total : 1**
+**Complexity: 1**
+- Logical operator sequence `||` in assignment = +1 increment
+- **Total: 1**
 
-## Comparaison avec McCabe
+## Comparison with McCabe
 
 | Aspect | McCabe | Cognitive |
 |---|---|---|
-| Niveau | Méthode | Méthode |
+| Level | Method | Method |
 | Base | +1 | +1 |
-| Multiplicateur de nesting | Aucun | Oui (N+1) |
-| `if` simple | +1 | +1 |
-| `if` au nesting 2 | +1 | +3 |
-| `try`/`catch`/`finally` | 0 | 0 (mais augmente nesting pour `catch`) |
-| Opérateurs logiques | Comptés individuellement | Séquences ou transitions |
-| Objectif | Chemins indépendants | Charge cognitive |
+| Nesting multiplier | None | Yes (N+1) |
+| Simple `if` | +1 | +1 |
+| `if` at nesting 2 | +1 | +3 |
+| `try`/`catch`/`finally` | 0 | 0 (but increases nesting for `catch`) |
+| Logical operators | Counted individually | Sequences or transitions |
+| Goal | Independent paths | Cognitive load |
 
-## Quand utiliser Cognitive Complexity
+## When to Use Cognitive Complexity
 
-- **Revue de code** — corrèle mieux avec la difficulté réelle de lecture et de maintenance
-- **Standards modernes** — utilisé par SonarQube, recommandé pour la qualité logicielle
-- **Détection de code difficile à comprendre** — pénalise plus fortement l'imbrication que McCabe
-- **Corrélation avec les bugs** — études montrent une meilleure corrélation avec les défauts réels que McCabe
-- **Refactoring guidé** — pointe vers les refactorisations les plus utiles (dénestification)
+- **Code review** — correlates better with actual reading and maintenance difficulty
+- **Modern standards** — used by SonarQube, recommended for software quality
+- **Detecting hard-to-understand code** — penalizes nesting more strongly than McCabe
+- **Bug correlation** — studies show better correlation with real defects than McCabe
+- **Guided refactoring** — points to most useful refactorings (denesting)
 
 ## Limitations
 
-- Plus complexe à calculer et à expliquer que McCabe
-- Les seuils de complexité acceptables peuvent varier selon les projets
-- Nécessite une compréhension du multiplicateur de nesting pour interpréter les résultats
-
+- More complex to calculate and explain than McCabe
+- Acceptable complexity thresholds may vary by project
+- Requires understanding of nesting multiplier to interpret results

@@ -10,15 +10,21 @@
     <PackageId>ComplexityCoverage</PackageId>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>complexity-coverage</ToolCommandName>
-    <Version>1.0.0</Version>
+    <Version>0.0.1</Version>
+    <ReleaseVersion>0.0.1</ReleaseVersion>
     <Title>ComplexityCoverage</Title>
-    <Description>Calculate complexity-weighted test coverage for .NET projects. Weights code coverage by cyclomatic complexity, nesting depth, Halstead Volume, or Maintainability Index to emphasize testing of complex business logic.</Description>
-    <Authors>ComplexityCoverage Contributors</Authors>
-    <RepositoryUrl>https://github.com/ingdevfi/ComplexityCoverage.Net</RepositoryUrl>
+    <Description>Calculate complexity-weighted test coverage for C# projects. Weights could be computed with many strategies: McCabe, Haltead Volume, Congitive,...</Description>
+    <Authors>Votre Nom</Authors>
+    <RepositoryUrl>https://github.com/ingdevfi/CoCo.Net</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>complexity;coverage;testing;metrics;analysis;mccabe;halstead;maintainability</PackageTags>
-    <PackageProjectUrl>https://github.com/ingdevfi/ComplexityCoverage.Net</PackageProjectUrl>
+    <PackageTags>complexity;coverage;testing;metrics;analysis;mccabe;halstead;maintainability;cognitive;nesting</PackageTags>
+    <PackageProjectUrl>https://github.com/ingdevfi/CoCo.Net</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <IconUrl>https://github.com/ingdevfi/CoCo.Net/raw/main/resources/White_logo_2.jpg</IconUrl>
+    <LicenseUrl>https://github.com/ingdevfi/CoCo.Net/LICENCE</LicenseUrl>
   </PropertyGroup>
 
   <!-- Self-contained single-file settings only apply during dotnet publish, not during build/test -->

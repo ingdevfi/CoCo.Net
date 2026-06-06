@@ -2,52 +2,52 @@
 
 ## Formula
 
-La complexité cyclomatique de McCabe est formellement définie par :
+McCabe cyclomatic complexity is formally defined by:
 
 ```
 M = E - N + 2P
 ```
 
-où :
-- **E** = nombre d'arêtes dans le graphe de flux de contrôle
-- **N** = nombre de nœuds dans le graphe de flux de contrôle
-- **P** = nombre de composantes connexes (toujours 1 pour une méthode)
+where:
+- **E** = number of edges in the control flow graph
+- **N** = number of nodes in the control flow graph
+- **P** = number of connected components (always 1 for a method)
 
-**Formule simplifiée équivalente** : `CC = 1 + nombre de points de décision`
+**Equivalent simplified formula**: `CC = 1 + number of decision points`
 
-## Choix d'implémentation
+## Implementation Choice
 
-### Niveau méthode
+### Method-level
 
-Toutes les lignes d'une méthode partagent la même valeur de complexité. Cela représente le nombre minimum de chemins indépendants à travers la méthode — c'est la définition classique de McCabe utilisée par Visual Studio et SonarQube.
+All lines in a method share the same complexity value. This represents the minimum number of independent paths through the method — it's the classical McCabe definition used by Visual Studio and SonarQube.
 
-### Points de décision comptés
+### Decision Points Counted
 
 | Construction | Contribution |
 |---|---|
 | `if` / `else if` | +1 |
 | `for`, `while`, `foreach` | +1 |
-| `case` dans un `switch` (chaque section) | +1 |
-| Opérateur ternaire `?:` | +1 |
-| Opérateurs logiques `&&`, `||` dans une condition | +1 chacun |
+| `case` in a `switch` (each section) | +1 |
+| Ternary operator `?:` | +1 |
+| Logical operators `&&`, `||` in condition | +1 each |
 
-### Points de décision NON comptés
+### Decision Points NOT Counted
 
-| Construction | Raison |
+| Construction | Reason |
 |---|---|
-| `else` | Pas un nouveau chemin de décision (couvert par le `if`) |
-| `return` | Simple sortie, pas un branchement conditionnel |
-| `try` / `catch` / `finally` | Gestion d'exceptions, pas un branchement de flux de contrôle classique |
+| `else` | Not a new decision point (covered by `if`) |
+| `return` | Simple exit, not a conditional branch |
+| `try` / `catch` / `finally` | Exception handling, not classic control flow branching |
 
-### Cache par arbre syntaxique
+### Syntax Tree Caching
 
-Un `ConcurrentDictionary<SyntaxTree, Dictionary<MethodDeclarationSyntax, double>>` met en cache la complexité par méthode pour éviter de recalculer lors du traitement de chaque ligne. Un second cache (`_methodSpanCache`) pré-calcule les spans de méthodes pour un lookup O(1) par ligne.
+A `ConcurrentDictionary<SyntaxTree, Dictionary<MethodDeclarationSyntax, double>>` caches complexity per method to avoid recalculating when processing each line. A second cache (`_methodSpanCache`) pre-calculates method spans for O(1) lookup per line.
 
 ### WrappingSyntaxTreeCache
 
-McCabe utilise un cache spécial qui enveloppe le code dans une classe si aucune `MethodDeclarationSyntax` n'est trouvée. Cela permet de traiter des snippets de test qui ne sont pas dans une classe.
+McCabe uses a special cache that wraps code in a class if no `MethodDeclarationSyntax` is found. This allows processing test snippets not in a class.
 
-## Exemples
+## Examples
 
 ### Simple `if`
 
@@ -59,7 +59,7 @@ public void Example() {
 }
 ```
 
-**Poids : 2** (1 base + 1 `if`)
+**Weight: 2** (1 base + 1 `if`)
 
 ### `if` / `else`
 
@@ -73,9 +73,9 @@ public void Example() {
 }
 ```
 
-**Poids : 2** (1 base + 1 `if` — le `else` n'ajoute pas de point de décision)
+**Weight: 2** (1 base + 1 `if` — `else` doesn't add decision point)
 
-### `if` / `else` imbriqués
+### Nested `if` / `else`
 
 ```csharp
 public void Example() {
@@ -91,9 +91,9 @@ public void Example() {
 }
 ```
 
-**Poids : 3** (1 base + 1 `if` externe + 1 `if` interne)
+**Weight: 3** (1 base + 1 external `if` + 1 internal `if`)
 
-### Conditions multiples dans un `if`
+### Multiple conditions in an `if`
 
 ```csharp
 public void Example() {
@@ -103,9 +103,9 @@ public void Example() {
 }
 ```
 
-**Poids : 4** (1 base + 1 `if` + 1 `&&` + 1 `||`)
+**Weight: 4** (1 base + 1 `if` + 1 `&&` + 1 `||`)
 
-### Opérateur ternaire
+### Ternary operator
 
 ```csharp
 public void Example() {
@@ -113,7 +113,7 @@ public void Example() {
 }
 ```
 
-**Poids : 2** (1 base + 1 ternaire)
+**Weight: 2** (1 base + 1 ternary)
 
 ### `switch`
 
@@ -133,9 +133,9 @@ public void Example() {
 }
 ```
 
-**Poids : 4** (1 base + 3 sections `case`/`default`)
+**Weight: 4** (1 base + 3 `case`/`default` sections)
 
-### Méthode avec plusieurs `return`
+### Method with multiple `return`
 
 ```csharp
 public int Example() {
@@ -149,7 +149,7 @@ public int Example() {
 }
 ```
 
-**Poids : 3** (1 base + 2 `if` — les `return` ne sont pas des points de décision)
+**Weight: 3** (1 base + 2 `if` — `return` are not decision points)
 
 ### `try` / `catch` / `finally`
 
@@ -165,11 +165,11 @@ public void Example() {
 }
 ```
 
-**Poids : 1** (1 base — `try`/`catch`/`finally` ne sont pas des points de décision dans l'implémentation McCabe classique)
+**Weight: 1** (1 base — `try`/`catch`/`finally` are not decision points in classical McCabe implementation)
 
-## Quand utiliser McCabe
+## When to Use McCabe
 
-- Analyse de complexité traditionnelle
-- Conformité aux standards industriels (ISO 26262, MISRA)
-- Estimation du nombre minimum de tests nécessaires pour couvrir tous les chemins
-- Comparaison avec les seuils classiques (≤10 = bon, 11-20 = modéré, >20 = complexe)
+- Traditional complexity analysis
+- Compliance with industry standards (ISO 26262, MISRA)
+- Estimating minimum number of tests needed to cover all paths
+- Comparison with classic thresholds (≤10 = good, 11-20 = moderate, >20 = complex)

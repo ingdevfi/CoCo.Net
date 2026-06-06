@@ -6,66 +6,66 @@
 HV = N × log₂(n)
 ```
 
-où :
-- **N** (longueur) = nombre total d'opérateurs + nombre total d'opérandes sur la ligne
-- **n** (vocabulaire) = nombre d'opérateurs uniques + nombre d'opérandes uniques sur la ligne
+where:
+- **N** (length) = total number of operators + total number of operands on the line
+- **n** (vocabulary) = number of unique operators + number of unique operands on the line
 
-## Choix d'implémentation
+## Implementation Choice
 
-### Niveau ligne
+### Line-level
 
-Le volume Halstead est calculé **par ligne**. Chaque ligne reçoit son propre décompte d'opérateurs/opérandes et son propre volume. Cela permet de distinguer les lignes simples des lignes complexes au sein d'une même méthode.
+Halstead volume is calculated **per line**. Each line receives its own operator/operand count and volume. This allows distinguishing simple lines from complex ones within the same method.
 
-### Classification des tokens
+### Token Classification
 
-#### Opérateurs (« actions »)
+#### Operators (« actions »)
 
-| Catégorie | Exemples |
+| Category | Examples |
 |---|---|
-| Mots-clés | `if`, `for`, `while`, `return`, `int`, `var`, `public`, `class`, etc. |
-| Arithmétiques | `+`, `-`, `*`, `/`, `%` |
-| Affectation | `=`, `+=`, `-=`, `*=`, `/=`, `%=`, etc. |
-| Comparaison | `==`, `!=`, `<`, `>`, `<=`, `>=` |
-| Logiques | `&&`, `||`, `!` |
+| Keywords | `if`, `for`, `while`, `return`, `int`, `var`, `public`, `class`, etc. |
+| Arithmetic | `+`, `-`, `*`, `/`, `%` |
+| Assignment | `=`, `+=`, `-=`, `*=`, `/=`, `%=`, etc. |
+| Comparison | `==`, `!=`, `<`, `>`, `<=`, `>=` |
+| Logical | `&&`, `||`, `!` |
 | Bitwise | `&`, `|`, `^`, `~`, `<<`, `>>` |
-| Ponctuation | `(`, `)`, `{`, `}`, `[`, `]`, `;`, `,`, `.`, `:`, `?` |
-| Incrémentation | `++`, `--` |
+| Punctuation | `(`, `)`, `{`, `}`, `[`, `]`, `;`, `,`, `.`, `:`, `?` |
+| Incrementation | `++`, `--` |
 | Lambda/arrow | `=>` |
 | Null coalescing | `??`, `??=` |
 
-#### Opérandes (« données »)
+#### Operands (« data »)
 
-| Catégorie | Exemples |
+| Category | Examples |
 |---|---|
-| Identifiants | noms de variables, méthodes, types |
-| Littéraux numériques | `1`, `3.14`, `0xFF` |
-| Littéraux chaînes | `"hello"`, `'c'` |
-| Booléens | `true`, `false` |
+| Identifiers | variable names, method names, types |
+| Numeric literals | `1`, `3.14`, `0xFF` |
+| String literals | `"hello"`, `'c'` |
+| Booleans | `true`, `false` |
 | Null | `null` |
 
-### Cache par arbre syntaxique
+### Syntax Tree Caching
 
-Un `ConcurrentDictionary<SyntaxTree, Dictionary<int, double>>` pré-calcule le volume pour chaque ligne de l'arbre en une seule passe (`BuildLineComplexityMap`). Les appels ultérieurs pour d'autres lignes du même fichier sont des lookups O(1).
+A `ConcurrentDictionary<SyntaxTree, Dictionary<int, double>>` pre-calculates volume for each line of the tree in a single pass (`BuildLineComplexityMap`). Subsequent calls for other lines from the same file are O(1) lookups.
 
-### Cas particulier : vocabulaire minimal
+### Special Case: Minimal Vocabulary
 
-Si `n ≤ 1`, le volume est simplement `N` (évite `log₂(0)` ou `log₂(1) = 0`).
+If `n ≤ 1`, volume is simply `N` (avoids `log₂(0)` or `log₂(1) = 0`).
 
-## Exemples
+## Examples
 
 ### Simple `if`
 
 ```csharp
 public void Example() {
-	if (x > 0) {       // ← ligne mesurée
+	if (x > 0) {       // ← measured line
 		var a = 1;
 	}
 }
 ```
 
-**Ligne `if (x > 0) {`** :
-- Opérateurs : `if`, `(`, `)`, `>`, `{` → N_op = 5, uniques = 5
-- Opérandes : `x`, `0` → N_opd = 2, uniques = 2
+**Line `if (x > 0) {`:**
+- Operators: `if`, `(`, `)`, `>`, `{` → N_op = 5, unique = 5
+- Operands: `x`, `0` → N_opd = 2, unique = 2
 - N = 7, n = 7
 - **HV = 7 × log₂(7) ≈ 19.6**
 
@@ -74,44 +74,44 @@ public void Example() {
 ```csharp
 public void Example() {
 	if (x > 0) {
-		var a = 1;     // ← ligne mesurée
+		var a = 1;     // ← measured line
 	} else {
 		var b = 2;
 	}
 }
 ```
 
-**Ligne `var a = 1;`** :
-- Opérateurs : `var`, `=`, `;` → 3
-- Opérandes : `a`, `1` → 2
+**Line `var a = 1;`:**
+- Operators: `var`, `=`, `;` → 3
+- Operands: `a`, `1` → 2
 - N = 5, n = 5
 - **HV = 5 × log₂(5) ≈ 11.6**
 
-### Conditions multiples
+### Multiple Conditions
 
 ```csharp
 public void Example() {
-	if (x > 0 && y > 0 || z == 1) {   // ← ligne mesurée
+	if (x > 0 && y > 0 || z == 1) {   // ← measured line
 		var a = 1;
 	}
 }
 ```
 
-**Ligne avec conditions multiples** : vocabulaire riche en opérateurs (`if`, `(`, `)`, `>`, `&&`, `||`, `==`, `{`) et opérandes (`x`, `y`, `z`, `0`, `1`).
+**Line with multiple conditions:** rich vocabulary of operators (`if`, `(`, `)`, `>`, `&&`, `||`, `==`, `{`) and operands (`x`, `y`, `z`, `0`, `1`).
 
-Volume significativement plus élevé qu'un simple `if`.
+Significantly higher volume than simple `if`.
 
-### Opérateur ternaire
+### Ternary operator
 
 ```csharp
 public void Example() {
-	var result = x > 0 ? 1 : 0;   // ← ligne mesurée
+	var result = x > 0 ? 1 : 0;   // ← measured line
 }
 ```
 
-**Ligne ternaire** :
-- Opérateurs : `var`, `=`, `>`, `?`, `:`, `;` → 6
-- Opérandes : `result`, `x`, `0`, `1`, `0` → 5 total, 3 uniques
+**Ternary line:**
+- Operators: `var`, `=`, `>`, `?`, `:`, `;` → 6
+- Operands: `result`, `x`, `0`, `1`, `0` → 5 total, 3 unique
 - N = 11, n = 9
 - **HV ≈ 11 × log₂(9) ≈ 34.8**
 
@@ -121,21 +121,21 @@ public void Example() {
 public void Example() {
 	switch (x) {
 		case 1:
-			var a = 1;   // ← ligne mesurée
+			var a = 1;   // ← measured line
 			break;
 		...
 	}
 }
 ```
 
-Chaque ligne du switch a son propre volume. Les lignes `case 1:` ont des mots-clés (`case`, `:`) et un opérande (`1`).
+Each switch line has its own volume. Lines like `case 1:` have keywords (`case`, `:`) and one operand (`1`).
 
 ### `try` / `catch` / `finally`
 
 ```csharp
 public void Example() {
 	try {
-		var a = DoSomething();   // ← ligne mesurée
+		var a = DoSomething();   // ← measured line
 	} catch (Exception ex) {
 		Log(ex);
 	} finally {
@@ -144,22 +144,22 @@ public void Example() {
 }
 ```
 
-**Ligne `var a = DoSomething();`** :
-- Opérateurs : `var`, `=`, `(`, `)`, `;` → 5
-- Opérandes : `a`, `DoSomething` → 2
+**Line `var a = DoSomething();`:**
+- Operators: `var`, `=`, `(`, `)`, `;` → 5
+- Operands: `a`, `DoSomething` → 2
 - N = 7, n = 7
 - **HV = 7 × log₂(7) ≈ 19.6**
 
-## Quand utiliser Halstead
+## When to Use Halstead
 
-- Estimation de l'effort de développement et maintenance
-- Évaluation de la qualité/densité du code
-- Détection de code trop verbeux ou trop dense
-- Complément aux métriques de flux de contrôle (McCabe, Nesting) qui ne voient pas la complexité « informationnelle » d'une ligne
+- Development and maintenance effort estimation
+- Code quality/density evaluation
+- Detection of overly verbose or dense code
+- Complement to control flow metrics (McCabe, Nesting) that don't see "informational" complexity of a line
 
 ## Limitations
 
-- Différentes implémentations peuvent classer les tokens différemment
-- Ne prend pas en compte les patterns de flux de contrôle
-- Le formatage et les espaces peuvent affecter les résultats (indirectement via le découpage en lignes)
-- Peut ne pas corréler aussi bien avec les taux de défauts que la complexité cyclomatique
+- Different implementations may classify tokens differently
+- Does not account for control flow patterns
+- Formatting and spacing can affect results (indirectly via line splitting)
+- May not correlate as well with defect rates as cyclomatic complexity

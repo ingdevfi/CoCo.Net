@@ -1,7 +1,7 @@
 # Configuration File
 
 ComplexityCoverage supports an optional JSON configuration file as a complement to command-line arguments.
-This is especially useful when you have a lot of options to specify, want to version-control your analysis settings, or share a common configuration across a team.
+This is especially useful when you have many options to specify, want to version-control your analysis settings, or share a common configuration across a team.
 
 ## File name and location
 
@@ -52,11 +52,11 @@ complexity-coverage
 | `coverageFile` | string | `--coverage-file` / `-cf` | Path to an existing coverage XML file (skips running tests) |
 | `coverageFormat` | string | `--coverage-format` | `cobertura` or `opencover` (auto-detected if omitted) |
 | `theme` | string | `--theme` | Built-in theme name (`light`, `dark-monokai`) or path to a custom theme JSON file |
-| `themeOverrides` | object | *(none)* | Per-property colour/font overrides applied on top of the selected theme — see below |
+| `themeOverrides` | object | *(none)* | Per-property color/font overrides applied on top of the selected theme — see below |
 
 ## Theme overrides
 
-`themeOverrides` lets you change individual colours or fonts without creating a whole custom theme file.
+`themeOverrides` lets you change individual colors or fonts without creating a whole custom theme file.
 The keys are the **camelCase JSON property names** of the theme (see the [Themes](../README.md#themes) section of the README for the full list).
 
 ```jsonc
@@ -82,13 +82,13 @@ If only `themeOverrides` is set (no `theme` key), overrides are applied on top o
 | `fontFamily` | Font used for all report text |
 | `fontSize` | Base font size (e.g. `13px`) |
 | `headerFontSize` | Font size for headings (e.g. `1.1em`) |
-| `bodyBg` / `bodyFg` | Page background and default text colour |
-| `headerBg` / `headerBorder` / `headerFg` | Sticky table-header row colours |
+| `bodyBg` / `bodyFg` | Page background and default text color |
+| `headerBg` / `headerBorder` / `headerFg` | Sticky table-header row colors |
 | `cardLineBg` / `cardStrategyBg` / `cardFg` | Summary card backgrounds and text |
 | `tableBorder` / `tableHeaderBg` / `tableHeaderFg` / `tableRowAltBg` | Summary table styling |
 | `coveredBg` / `uncoveredBg` | Per-file view row backgrounds (covered / not covered) |
-| `gutterFg` / `gutterBorder` / `complexityFg` / `rowBorder` / `stickyHeaderBg` | Per-file view gutter and layout colours |
-| `syntaxKeyword` / `syntaxControlFlow` / `syntaxString` / `syntaxNumber` / `syntaxComment` / `syntaxPreproc` / `syntaxType` / `syntaxDefault` | Syntax highlighting token colours |
+| `gutterFg` / `gutterBorder` / `complexityFg` / `rowBorder` / `stickyHeaderBg` | Per-file view gutter and layout colors |
+| `syntaxKeyword` / `syntaxControlFlow` / `syntaxString` / `syntaxNumber` / `syntaxComment` / `syntaxPreproc` / `syntaxType` / `syntaxDefault` | Syntax highlighting token colors |
 
 ## Complete example
 
