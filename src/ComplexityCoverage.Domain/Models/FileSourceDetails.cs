@@ -7,7 +7,8 @@ namespace ComplexityCoverage.Domain.Models
         int LineNumber,
         string RawText,
         bool? IsCovered,
-        IReadOnlyDictionary<string, double> ComplexityWeightByStrategy);
+        IReadOnlyDictionary<string, double> ComplexityWeightByStrategy,
+        IReadOnlyDictionary<string, double>? ContributionByStrategy = null);
 
     /// <summary>
     /// Source-level details for a single file, carrying line coverage and complexity annotations.

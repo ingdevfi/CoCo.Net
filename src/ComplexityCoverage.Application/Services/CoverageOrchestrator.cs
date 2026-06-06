@@ -200,21 +200,19 @@ namespace ComplexityCoverage.Application.Services
             // Calculate weighted coverage for each strategy
             var weightedByStrategy = new Dictionary<string, double>();
             var strategyMetrics = new List<(string Name, double Covered, double Total)>();
-            // Per-line weights keyed by strategy name (built once, reused for source details)
-            var lineWeightsByStrategy = new Dictionary<string, double[]>();
+            // Per-line complexity data keyed by strategy name (built once, reused for source details)
+            var lineComplexityByStrategy = new Dictionary<string, LineComplexity[]>();
 
             foreach (var (name, strategy) in _strategies)
             {
-                var weights = strategy.CalculateWeights(file);
+                var complexities = strategy.CalculateWeights(file);
                 var fileCoveredWeight = 0.0;
                 var fileAllWeight = 0.0;
-                var lineWeights = new double[file.Lines.Count];
 
                 for (int i = 0; i < file.Lines.Count; i++)
                 {
                     var lineNumber = file.Lines[i].LineNumber;
-                    var weight = weights[i];
-                    lineWeights[i] = weight;
+                    var weight = complexities[i].Weight;
 
                     // Only count lines that Coverlet actually instrumented (coverable lines).
                     // Non-executable declarations (using, namespace, class/struct/record/…) must not inflate the denominator.
@@ -231,7 +229,7 @@ namespace ComplexityCoverage.Application.Services
                 var weightedPct = fileAllWeight > 0 ? fileCoveredWeight / fileAllWeight * 100 : 0;
                 weightedByStrategy[name] = weightedPct;
                 strategyMetrics.Add((name, fileCoveredWeight, fileAllWeight));
-                lineWeightsByStrategy[name] = lineWeights;
+                lineComplexityByStrategy[name] = complexities.ToArray();
             }
 
             // Pre-index strategy names to avoid a ToDictionary allocation per line
@@ -243,9 +241,21 @@ namespace ComplexityCoverage.Application.Services
                 var loc = file.Lines[i];
                 bool? isCoveredLine = lineCoverage != null && lineCoverage.TryGetValue(loc.LineNumber, out var cov) ? cov : null;
                 var lineWeights = new Dictionary<string, double>(strategyNames.Length);
+                var lineContributions = new Dictionary<string, double>(strategyNames.Length);
                 for (int j = 0; j < strategyNames.Length; j++)
-                    lineWeights[strategyNames[j]] = lineWeightsByStrategy.TryGetValue(strategyNames[j], out var arr) ? arr[i] : 0.0;
-                lineSourceDetails.Add(new LineSourceDetail(loc.LineNumber, loc.RawText, isCoveredLine, lineWeights));
+                {
+                    if (lineComplexityByStrategy.TryGetValue(strategyNames[j], out var arr))
+                    {
+                        lineWeights[strategyNames[j]] = arr[i].Weight;
+                        lineContributions[strategyNames[j]] = arr[i].Contribution;
+                    }
+                    else
+                    {
+                        lineWeights[strategyNames[j]] = 0.0;
+                        lineContributions[strategyNames[j]] = 0.0;
+                    }
+                }
+                lineSourceDetails.Add(new LineSourceDetail(loc.LineNumber, loc.RawText, isCoveredLine, lineWeights, lineContributions));
             }
 
             var result = new FileCoverageResult(file.FilePath, lineCoveragePercentage, weightedByStrategy, coveredLines, coverableLines);

@@ -6,6 +6,11 @@
 
 Not all lines of code contribute equally to application stability, which means relying solely on simple line-count coverage is insufficient. CoCo.Net calculates **complexity-weighted test coverage** for your .NET projects. Instead of treating every line equally, we prioritize testing efforts by complexity, ensuring that critical business logic—the areas most prone to failure—receives the appropriate level of emphasis.
 
+## Disclaimer
+CoCo.Net are designed to asset C# code complexity using many strategies. It has not be design to work with other .Net language as VBA.Net or F#.
+>:gear: **There is no ideal way to compute complexity** each strategy have pros and cons. And it is quite hard to asset the way your mind read the code, and the complexity boundaries it has so. Morever because we all different, and all have diffrent knowledge of C# language.
+CoCo.Net offer many strategies to asset language complexity, many of them refer to industry well known standards like McCabe or Halstead, but this is our interpretation of their tehories. Thus, you can find different figures using differents tools that also claim comptuing complexity using McCabe or Halstead theories. Keep in mind Halstead and McCabe theories was developped in 70's, which a very longtime in software industry.
+
 ## Quick Start
 
 ### Installation
@@ -111,7 +116,7 @@ dotnet run --project src/ComplexityCoverage.Cli -- \
 - `--test-project, -t`: Path to a specific test `.csproj` file (optional — see [Test Project Auto-Detection](#test-project-auto-detection) below)
 - `--output, -o`: Output file path for HTML/ZIP report (default: `coverage-report.html`)
 - `--output-mode, -m`: Output mode — see [Output Modes](#output-modes) (default: `html`)
-- `--complexity, -c`: Strategy: `mccabe`, `nesting`, `halstead`, `mi`, or `all` (default: `mi`)
+- `--complexity, -c`: Strategy: `mccabe`, `nesting`, `cognitive`, `halstead`, `mi`, or `all` (default: `mi`)
 - `--timeout`: Test execution timeout in minutes (default: 15)
 - `--coverage-file, -cf`: Path to an existing coverage file — skips running tests
 - `--coverage-format`: Coverage file format: `cobertura` (default), `opencover` (auto-detected if omitted)
@@ -124,7 +129,7 @@ Use `--output-mode` (or `-m`) to choose how results are reported:
 
 | Mode | Files written | Description |
 |---|---|---|
-| `html` | `<output>.html` | **Default.** HTML summary report only |
+| `html` | `<output>.html` | **Default.** HTML **summary** report only |
 | `console` | *(none)* | Console table only — no file written |
 | `zip` | `<output>.zip` | ZIP archive only (summary HTML + annotated per-file HTML) |
 | `zip+console` | `<output>.zip` | ZIP archive **and** console table |
@@ -141,7 +146,7 @@ complexity-coverage --solution Solution.sln --output-mode html --output report.h
 
 ### `console` mode
 
-Console table only. Useful for CI pipelines where you only want the exit code and metrics in the log.
+Console summary table only. Useful for CI pipelines where you only want the exit code and metrics in the log.
 
 ```bash
 complexity-coverage --solution Solution.sln --output-mode console
@@ -153,7 +158,8 @@ Generates a single ZIP archive (no standalone `.html` file). The archive contain
 1. **`coverage-report.html`** — the same HTML summary as `html` mode, at the root of the archive
 2. **`<project>/<file>.html`** — one annotated HTML file per source file, organized by project folder, each showing:
    - Coverage status per line (green = covered, red = uncovered)
-   - Complexity weight per line for each active strategy shown in the margin
+   - Complexity weight per line for each active strategy shown in the margin. w column
+   - Complexity weight contribution per line for per-method strategies, stay blank for per line strateiges. c column
    - Summary cards (line coverage + weighted coverage per strategy) at the top
    - Syntax-highlighted C# source code
 
@@ -180,6 +186,7 @@ complexity-coverage \
 ## Test Project Auto-Detection
 
 When `--test-project` is **not** provided, the tool runs `dotnet test` on the solution file itself. The .NET SDK automatically discovers and executes **all test projects** referenced by the solution.
+:warning: It is strongly encouraged to provide `--coverage-file` with coverage results and **not** use this mode (see below). 
 
 **How it works:**
 
@@ -205,14 +212,19 @@ complexity-coverage --solution path/to/Solution.sln --test-project path/to/Tests
 
 | Strategy | Level | Description |
 |---|---|---|
-| **`mi`** (default) | Line | Maintainability Index — composite of McCabe + Halstead + SLOC |
-| **`mccabe`** | Method | Classical cyclomatic complexity (decision points) |
-| **`nesting`** | Line | Depth-based readability metric |
+| **`mi`** | Line | Maintainability Index — composite of McCabe + Halstead + SLOC |
 | **`halstead`** | Line | Operator/operand information density |
+| **`nesting`** | Line | Depth-based readability metric |
+| **`cognitive`** | Method | SonarSource cognitive complexity — weighted by nesting |
+| **`mccabe`** | Method | Classical cyclomatic complexity (decision points) |
 | **`all`** | — | Run all strategies for comparison |
 
-> 📖 Detailed documentation with formulas and examples:
-> [McCabe](doc/strategies/mccabe.md) · [Nesting](doc/strategies/nesting.md) · [Halstead](doc/strategies/halstead.md) · [Maintainability Index](doc/strategies/maintainability-index.md)
+ 📖 Detailed documentation with formulas and examples:
+ [McCabe](docs/strategies/mccabe.md) · [Nesting](docs/strategies/nesting.md) · [Cognitive](docs/strategies/cognitive.md) · [Halstead](docs/strategies/halstead.md) · [Maintainability Index](docs/strategies/maintainability-index.md)
+
+:warning: Using all strategies will consume many cpu and take more build time in your CI/CD pipe line. Thus, it is well using it to decide which strategy fits you the better, but discouraged for long time use.
+
+> 💡We encourage using Cognitive strategy. Even if McCabe is an industry standard it is quite poor and don't reflect the real mind effort to read the code. Halsted Volume and Maintain Index are also indutry standard but they are very theoriticals; and using them make hard to predict the % gain when coveraging of a line. Moreover, McCabe, Halstead, Maintain Index was created in the 70's, thus not adapated to new language like C#. Nesting is really easy to understand and predict coverage gain, but quite poor at figuring the code complexity. Finally, **Cognitive is best one as it combine McCabe (like) and Nesting**. 
 
 ## Supported Coverage File Formats
 
@@ -422,27 +434,6 @@ You can freely edit the JSON files or create new ones. All colour values are sta
 | `gutterFg` / `gutterBorder` / `complexityFg` / `rowBorder` / `stickyHeaderBg` | Hex colour | Per-file view gutter and layout colours |
 | `syntaxKeyword` / `syntaxControlFlow` / `syntaxString` / `syntaxNumber` / `syntaxComment` / `syntaxPreproc` / `syntaxType` / `syntaxDefault` | Hex colour | Syntax highlighting token colours |
 
-### Interpretation
-
-**Example Scenarios**:
-
-1. **Overall 95% coverage, mostly simple utilities → Risky**
-   - Weighted coverage may be only 70%
-   - Complex business logic is undertested
-
-2. **Overall 80% coverage, weighted 90% → Good**
-   - Complex code is well-tested
-   - Simple code is undertested (acceptable)
-
-## Troubleshooting
-
-### "dotnet test did not complete within timeout"
-
-**Solution**: Increase timeout:
-```bash
---timeout 30  # 30 minutes
-```
-
 ### "No source files found"
 
 **Solution**: Check that source files exist in expected locations. The tool excludes:
@@ -481,5 +472,5 @@ dotnet add package Coverlet.Collector
 [LICENSE](LICENSE)
 
 ---
-**Version**: 3.0  
-**Last Updated**: 2025
+**Version**: 4.0  
+**Last Updated**: 2026

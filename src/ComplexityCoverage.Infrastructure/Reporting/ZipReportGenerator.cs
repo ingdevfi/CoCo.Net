@@ -146,14 +146,24 @@ namespace ComplexityCoverage.Infrastructure.Reporting
             sb.AppendLine("<div class=\"table-wrap\">");
             sb.AppendLine("<table>");
 
+            // First header row: strategy names spanning 2 columns each
             sb.Append($"<thead><tr style=\"color:{t.SyntaxDefault};font-size:{t.HeaderFontSize};\">");
             sb.Append("<td class=\"ln\">#</td>");
             foreach (var name in strategyNames)
             {
-                sb.Append($"<td class=\"cov\">{HtmlEncode(name)}</td>");
+                sb.Append($"<td class=\"cov\" colspan=\"2\" style=\"text-align:center;\">{HtmlEncode(name)}</td>");
             }
+            sb.AppendLine("<td class=\"src\">Source</td></tr>");
 
-            sb.AppendLine("<td class=\"src\">Source</td></tr></thead>");
+            // Second header row: W (weight) and C (contribution) sub-headers
+            sb.Append($"<tr style=\"color:{t.SyntaxDefault};font-size:{t.HeaderFontSize};border-bottom:1px solid {t.RowBorder};\">");
+            sb.Append("<td class=\"ln\"></td>");
+            for (int i = 0; i < strategyNames.Count; i++)
+            {
+                sb.Append($"<td class=\"cov\" style=\"text-align:center;font-size:0.9em;\">W</td>");
+                sb.Append($"<td class=\"cov\" style=\"text-align:center;font-size:0.9em;\">C</td>");
+            }
+            sb.AppendLine("<td class=\"src\"></td></tr></thead>");
             sb.AppendLine("<tbody>");
 
             foreach (var line in fileDetail.Lines)
@@ -164,8 +174,13 @@ namespace ComplexityCoverage.Infrastructure.Reporting
                 foreach (var name in strategyNames)
                 {
                     var w = line.ComplexityWeightByStrategy.GetValueOrDefault(name, 0);
-                    var display = w > 0 ? w.ToString("F2", CultureInfo.InvariantCulture) : "";
-                    sb.Append($"<td class=\"cov\">{display}</td>");
+                    var displayWeight = w > 0 ? w.ToString("F2", CultureInfo.InvariantCulture) : "";
+                    sb.Append($"<td class=\"cov\">{displayWeight}</td>");
+
+                    // Display contribution with + prefix for positive values, nothing for 0
+                    var c = line.ContributionByStrategy?.GetValueOrDefault(name, 0) ?? 0;
+                    var displayContribution = c > 0 ? $"+{c.ToString("F2", CultureInfo.InvariantCulture)}" : "";
+                    sb.Append($"<td class=\"cov\">{displayContribution}</td>");
                 }
 
                 var srcHtml = highlightedLines.TryGetValue(line.LineNumber, out var hl) ? hl : HtmlEncode(line.RawText);

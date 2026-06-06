@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Concurrent;
+using ComplexityCoverage.Domain.Models;
 
 namespace ComplexityCoverage.Domain.Complexity
 {
@@ -29,6 +30,74 @@ namespace ComplexityCoverage.Domain.Complexity
             }
 
             return methodComplexityCache.GetOrAdd(containingMethod, m => CalculateMcCabeComplexity(m));
+        }
+
+        public override IReadOnlyList<LineComplexity> CalculateWeights(Models.SourceFile file)
+        {
+            // For McCabe (per-method strategy), calculate weight and contribution for each line
+            var cached = new WrappingSyntaxTreeCache().GetOrCreateSyntaxTree(file.Content);
+            var data = (CachedSyntaxTreeData)cached;
+            var results = new LineComplexity[file.Lines.Count];
+
+            // Dictionary to map line numbers to their contributions
+            var lineContributions = new Dictionary<int, double>();
+
+            // Walk through all decision points and mark their line contributions
+            foreach (var method in data.Root.DescendantNodes().OfType<MethodDeclarationSyntax>())
+            {
+                foreach (var node in method.DescendantNodes())
+                {
+                    double nodeContribution = 0;
+                    switch (node)
+                    {
+                        case IfStatementSyntax ifStmt:
+                            nodeContribution = 1.0 + CountLogicalOperators(ifStmt.Condition);
+                            break;
+                        case ForStatementSyntax forStmt:
+                            nodeContribution = 1.0;
+                            if (forStmt.Condition != null)
+                                nodeContribution += CountLogicalOperators(forStmt.Condition);
+                            break;
+                        case ForEachStatementSyntax:
+                            nodeContribution = 1.0;
+                            break;
+                        case WhileStatementSyntax whileStmt:
+                            nodeContribution = 1.0 + CountLogicalOperators(whileStmt.Condition);
+                            break;
+                        case ConditionalExpressionSyntax ternary:
+                            nodeContribution = 1.0 + CountLogicalOperators(ternary.Condition);
+                            break;
+                        case SwitchSectionSyntax:
+                        case SwitchExpressionArmSyntax:
+                            nodeContribution = 1.0;
+                            break;
+                        case BinaryExpressionSyntax binaryExpr:
+                            if (binaryExpr.Kind() == SyntaxKind.CoalesceExpression)
+                                nodeContribution = 1.0;
+                            else if ((binaryExpr.Kind() == SyntaxKind.LogicalAndExpression || binaryExpr.Kind() == SyntaxKind.LogicalOrExpression)
+                                && !IsInsideHandledCondition(binaryExpr))
+                                nodeContribution = 1.0;
+                            break;
+                    }
+
+                    if (nodeContribution > 0)
+                    {
+                        var lineSpan = data.Tree.GetLineSpan(node.Span);
+                        var startLine = lineSpan.StartLinePosition.Line + 1;
+                        lineContributions[startLine] = nodeContribution;
+                    }
+                }
+            }
+
+            // Build results with weights and contributions
+            for (int i = 0; i < file.Lines.Count; i++)
+            {
+                var weight = CalculateLineWeight(file.Lines[i].LineNumber, data.Root, data.Tree);
+                var contribution = lineContributions.TryGetValue(file.Lines[i].LineNumber, out var c) ? c : 0.0;
+                results[i] = new LineComplexity(weight, contribution);
+            }
+
+            return results;
         }
 
         /// <summary>
