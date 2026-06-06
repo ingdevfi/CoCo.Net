@@ -1,9 +1,10 @@
 <Solution>
-  <Folder Name="/doc/">
+  <Folder Name="/docs/">
     <File Path="doc/strategies/halstead.md" />
     <File Path="doc/strategies/maintainability-index.md" />
     <File Path="doc/strategies/mccabe.md" />
     <File Path="doc/strategies/nesting.md" />
+    <File Path="docs/Cognitive_Complexity_Sonar_Guide_2023.md" />
     <File Path="README.md" />
   </Folder>
   <Folder Name="/Solution Items/">

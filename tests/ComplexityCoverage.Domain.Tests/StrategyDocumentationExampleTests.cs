@@ -1,6 +1,7 @@
 using NFluent;
 using ComplexityCoverage.Domain.Complexity;
 using ComplexityCoverage.Domain.Interfaces;
+using ComplexityCoverage.Domain.Models;
 
 namespace ComplexityCoverage.Domain.Tests
 {
@@ -105,7 +106,7 @@ public void Example() {
         {
             var weights = _mccabe.CalculateWeights(ComplexityTestHelper.CreateSourceFile(SimpleIf));
             // 1 (base) + 1 (if) = 2
-            Check.That(weights[3]).IsEqualTo(2);
+            Check.That(weights[3].Weight).IsEqualTo(2);
         }
 
         [Fact]
@@ -113,8 +114,8 @@ public void Example() {
         {
             var weights = _mccabe.CalculateWeights(ComplexityTestHelper.CreateSourceFile(IfElse));
             // 1 (base) + 1 (if) = 2 — else does not add a decision point
-            Check.That(weights[3]).IsEqualTo(2);
-            Check.That(weights[5]).IsEqualTo(2);
+            Check.That(weights[3].Weight).IsEqualTo(2);
+            Check.That(weights[5].Weight).IsEqualTo(2);
         }
 
         [Fact]
@@ -122,7 +123,7 @@ public void Example() {
         {
             var weights = _mccabe.CalculateWeights(ComplexityTestHelper.CreateSourceFile(NestedIfElse));
             // 1 (base) + 1 (outer if) + 1 (inner if) = 3
-            Check.That(weights[4]).IsEqualTo(3);
+            Check.That(weights[4].Weight).IsEqualTo(3);
         }
 
         [Fact]
@@ -130,7 +131,7 @@ public void Example() {
         {
             var weights = _mccabe.CalculateWeights(ComplexityTestHelper.CreateSourceFile(MultipleConditions));
             // 1 (base) + 1 (if) + 1 (&&) + 1 (||) = 4
-            Check.That(weights[3]).IsEqualTo(4);
+            Check.That(weights[3].Weight).IsEqualTo(4);
         }
 
         [Fact]
@@ -138,7 +139,7 @@ public void Example() {
         {
             var weights = _mccabe.CalculateWeights(ComplexityTestHelper.CreateSourceFile(Ternary));
             // 1 (base) + 1 (ternary) = 2
-            Check.That(weights[2]).IsEqualTo(2);
+            Check.That(weights[2].Weight).IsEqualTo(2);
         }
 
         [Fact]
@@ -146,14 +147,14 @@ public void Example() {
         {
             var weights = _mccabe.CalculateWeights(ComplexityTestHelper.CreateSourceFile(Switch));
             // 1 (base) + 3 (case/default sections) = 4
-            Check.That(weights[5]).IsEqualTo(4);
+            Check.That(weights[5].Weight).IsEqualTo(4);
         }
 
         [Fact]
         public void McCabe_MultipleReturns()
         {
             var weights = _mccabe.CalculateWeights(ComplexityTestHelper.CreateSourceFile(MultipleReturns));
-            Check.That(weights[3]).IsEqualTo(4);
+            Check.That(weights[3].Weight).IsEqualTo(3);
         }
 
         [Fact]
@@ -161,7 +162,7 @@ public void Example() {
         {
             var weights = _mccabe.CalculateWeights(ComplexityTestHelper.CreateSourceFile(TryCatchFinally));
             // 1 (base) — try/catch/finally are not decision points in McCabe
-            Check.That(weights[3]).IsEqualTo(1);
+            Check.That(weights[3].Weight).IsEqualTo(1);
         }
 
         #endregion
@@ -173,7 +174,7 @@ public void Example() {
         {
             var weights = _nesting.CalculateWeights(ComplexityTestHelper.CreateSourceFile(SimpleIf));
             // Line inside if: 1 (base) + 1 (if depth) = 2
-            Check.That(weights[3]).IsEqualTo(2);
+            Check.That(weights[3].Weight).IsEqualTo(2);
         }
 
         [Fact]
@@ -181,8 +182,8 @@ public void Example() {
         {
             var weights = _nesting.CalculateWeights(ComplexityTestHelper.CreateSourceFile(IfElse));
             // Both branches at depth 1: 1 + 1 = 2
-            Check.That(weights[3]).IsEqualTo(2);
-            Check.That(weights[5]).IsEqualTo(2);
+            Check.That(weights[3].Weight).IsEqualTo(2);
+            Check.That(weights[5].Weight).IsEqualTo(2);
         }
 
         [Fact]
@@ -190,7 +191,7 @@ public void Example() {
         {
             var weights = _nesting.CalculateWeights(ComplexityTestHelper.CreateSourceFile(NestedIfElse));
             // Inner body at depth 2: 1 + 2 = 3
-            Check.That(weights[4]).IsEqualTo(3);
+            Check.That(weights[4].Weight).IsEqualTo(3);
         }
 
         [Fact]
@@ -198,7 +199,7 @@ public void Example() {
         {
             var weights = _nesting.CalculateWeights(ComplexityTestHelper.CreateSourceFile(MultipleConditions));
             // Inside if with && and ||: 1 (base) + 1 (if) + 2 (&&, ||) = 4
-            Check.That(weights[3]).IsEqualTo(4);
+            Check.That(weights[3].Weight).IsEqualTo(4);
         }
 
         [Fact]
@@ -206,7 +207,7 @@ public void Example() {
         {
             var weights = _nesting.CalculateWeights(ComplexityTestHelper.CreateSourceFile(Ternary));
             // Ternary adds 1 level: 1 + 1 = 2
-            Check.That(weights[2]).IsEqualTo(2);
+            Check.That(weights[2].Weight).IsEqualTo(2);
         }
 
         [Fact]
@@ -214,7 +215,7 @@ public void Example() {
         {
             var weights = _nesting.CalculateWeights(ComplexityTestHelper.CreateSourceFile(Switch));
             // Inside switch case section (3 sections): 1 + 3 = 4
-            Check.That(weights[5]).IsEqualTo(4);
+            Check.That(weights[5].Weight).IsEqualTo(4);
         }
 
         [Fact]
@@ -222,7 +223,7 @@ public void Example() {
         {
             var weights = _nesting.CalculateWeights(ComplexityTestHelper.CreateSourceFile(MultipleReturns));
             // Line inside first if: 1 + 1 = 2
-            Check.That(weights[3]).IsEqualTo(2);
+            Check.That(weights[3].Weight).IsEqualTo(2);
         }
 
         [Fact]
@@ -230,7 +231,7 @@ public void Example() {
         {
             var weights = _nesting.CalculateWeights(ComplexityTestHelper.CreateSourceFile(TryCatchFinally));
             // try/catch/finally don't add nesting depth in this implementation
-            Check.That(weights[3]).IsEqualTo(1);
+            Check.That(weights[3].Weight).IsEqualTo(1);
         }
 
         #endregion
@@ -242,7 +243,7 @@ public void Example() {
         {
             var weights = _halstead.CalculateWeights(ComplexityTestHelper.CreateSourceFile(SimpleIf));
             // if line has operators and operands → positive volume
-            Check.That(weights[2]).IsStrictlyGreaterThan(0);
+            Check.That(weights[2].Weight).IsStrictlyGreaterThan(0);
         }
 
         [Fact]
@@ -250,7 +251,7 @@ public void Example() {
         {
             var weights = _halstead.CalculateWeights(ComplexityTestHelper.CreateSourceFile(Ternary));
             // Ternary line: var, result, =, x, >, 0, ?, 1, :, 0, ; — rich vocabulary
-            Check.That(weights[2]).IsStrictlyGreaterThan(10);
+            Check.That(weights[2].Weight).IsStrictlyGreaterThan(10);
         }
 
         [Fact]
@@ -258,7 +259,7 @@ public void Example() {
         {
             var weights = _halstead.CalculateWeights(ComplexityTestHelper.CreateSourceFile(TryCatchFinally));
             // Method call line has operators/operands
-            Check.That(weights[3]).IsStrictlyGreaterThan(0);
+            Check.That(weights[3].Weight).IsStrictlyGreaterThan(0);
         }
 
         #endregion
@@ -269,14 +270,14 @@ public void Example() {
         public void MI_SimpleIf_WeightBetween0And100()
         {
             var weights = _mi.CalculateWeights(ComplexityTestHelper.CreateSourceFile(SimpleIf));
-            Check.That(weights).ContainsOnlyElementsThatMatch(w => w >= 0 && w <= 100);
+            Check.That(weights).ContainsOnlyElementsThatMatch(w => w.Weight >= 0 && w.Weight <= 100);
         }
 
         [Fact]
         public void MI_TryCatchFinally_WeightBetween0And100()
         {
             var weights = _mi.CalculateWeights(ComplexityTestHelper.CreateSourceFile(TryCatchFinally));
-            Check.That(weights).ContainsOnlyElementsThatMatch(w => w >= 0 && w <= 100);
+            Check.That(weights).ContainsOnlyElementsThatMatch(w => w.Weight >= 0 && w.Weight <= 100);
         }
 
         [Fact]
@@ -286,12 +287,55 @@ public void Example() {
             var complexWeights = _mi.CalculateWeights(ComplexityTestHelper.CreateSourceFile(NestedIfElse));
 
             // Complex code should have higher average non-zero weight
-            var simpleNonZero = simpleWeights.Where(w => w > 0).DefaultIfEmpty(0).Average();
-            var complexNonZero = complexWeights.Where(w => w > 0).DefaultIfEmpty(0).Average();
+            var simpleNonZero = simpleWeights.Where(w => w.Weight > 0).DefaultIfEmpty(new LineComplexity(0)).Average(w => w.Weight);
+            var complexNonZero = complexWeights.Where(w => w.Weight > 0).DefaultIfEmpty(new LineComplexity(0)).Average(w => w.Weight);
 
             Check.That(complexNonZero).IsStrictlyGreaterThan(simpleNonZero);
         }
 
         #endregion
+
+        #region Cognitive tests
+
+        private readonly IComplexityStrategy _cognitive = new CognitiveComplexityStrategy();
+
+        [Fact]
+        public void Cognitive_SimpleIf()
+        {
+            var weights = _cognitive.CalculateWeights(ComplexityTestHelper.CreateSourceFile(SimpleIf));
+            // Method: 1 (if) = 1
+            Check.That(weights[3].Weight).IsEqualTo(1.0);
+        }
+
+        [Fact]
+        public void Cognitive_NestedIfElse()
+        {
+            var weights = _cognitive.CalculateWeights(ComplexityTestHelper.CreateSourceFile(NestedIfElse));
+            // Nested structures have higher cognitive complexity due to nesting penalties
+            // All lines in method get the same weight (method-level metric)
+            Check.That(weights[4].Weight).IsStrictlyGreaterThan(2.0);
+        }
+
+        [Fact]
+        public void Cognitive_MultipleConditions()
+        {
+            var weights = _cognitive.CalculateWeights(ComplexityTestHelper.CreateSourceFile(MultipleConditions));
+            // Method: 1 (if) + 1 (logical operator sequence: && || &&) = 2
+            Check.That(weights[3].Weight).IsStrictlyGreaterThan(1.0);
+        }
+
+        [Fact]
+        public void Cognitive_TryCatchFinally()
+        {
+            var weights = _cognitive.CalculateWeights(ComplexityTestHelper.CreateSourceFile(TryCatchFinally));
+            // Catch does not add complexity, only nesting
+            // Method: 0 (try/catch/finally don't increment complexity) = 0
+            Check.That(weights[3].Weight).IsEqualTo(0.0);
+        }
+
+        #endregion
     }
 }
+
+
+

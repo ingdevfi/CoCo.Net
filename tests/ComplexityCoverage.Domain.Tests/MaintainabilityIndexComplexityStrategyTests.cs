@@ -28,8 +28,8 @@ public void Simple() {
             var weights = _strategy.CalculateWeights(file);
 
             Check.That(weights).Not.IsEmpty();
-            Check.That(weights).ContainsOnlyElementsThatMatch(w => w >= 0);
-            Check.That(weights.Max()).IsStrictlyLessThan(101.0).And.IsStrictlyGreaterThan(-1.0);
+            Check.That(weights).ContainsOnlyElementsThatMatch(w => w.Weight >= 0);
+            Check.That(weights.Max(w => w.Weight)).IsStrictlyLessThan(101.0).And.IsStrictlyGreaterThan(-1.0);
         }
 
         [Fact]
@@ -50,7 +50,7 @@ public int ComplexLogic(int a, int b, int c) {
             var weights = _strategy.CalculateWeights(file);
 
             Check.That(weights).Not.IsEmpty();
-            Check.That(weights).ContainsOnlyElementsThatMatch(w => w >= 0 && w <= 100);
+            Check.That(weights).ContainsOnlyElementsThatMatch(w => w.Weight >= 0 && w.Weight <= 100);
         }
 
         [Fact]
@@ -68,7 +68,7 @@ public int Calculate(int x, int y, int z) {
             var weights = _strategy.CalculateWeights(file);
 
             Check.That(weights).Not.IsEmpty();
-            Check.That(weights).ContainsOnlyElementsThatMatch(w => w >= 0 && w <= 100);
+            Check.That(weights).ContainsOnlyElementsThatMatch(w => w.Weight >= 0 && w.Weight <= 100);
         }
 
         [Fact]
@@ -87,7 +87,7 @@ public bool CheckCondition(int x, int y) {
             var weights = _strategy.CalculateWeights(file);
 
             Check.That(weights).Not.IsEmpty();
-            Check.That(weights).ContainsOnlyElementsThatMatch(w => w >= 0 && w <= 100);
+            Check.That(weights).ContainsOnlyElementsThatMatch(w => w.Weight >= 0 && w.Weight <= 100);
         }
 
         [Fact]
@@ -105,7 +105,7 @@ public void Test() {
             var weights = _strategy.CalculateWeights(file);
 
             Check.That(weights).HasSize(file.Lines.Count);
-            Check.That(weights).ContainsOnlyElementsThatMatch(w => w >= 0 && w <= 100);
+            Check.That(weights).ContainsOnlyElementsThatMatch(w => w.Weight >= 0 && w.Weight <= 100);
         }
 
         [Fact]
@@ -120,11 +120,11 @@ public void Method() {
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            var methodLines = weights.Skip(1).Take(file.Lines.Count - 2).Where(w => w > 0).ToList();
+            var methodLines = weights.Skip(1).Take(file.Lines.Count - 2).Where(w => w.Weight > 0).ToList();
             if (methodLines.Count > 1)
             {
-                var avgWeight = methodLines.Average();
-                Check.That(methodLines).ContainsOnlyElementsThatMatch(w => Math.Abs(w - avgWeight) < 50);
+                var avgWeight = methodLines.Average(w => w.Weight);
+                Check.That(methodLines).ContainsOnlyElementsThatMatch(w => Math.Abs(w.Weight - avgWeight) < 50);
             }
         }
 
@@ -146,7 +146,7 @@ public string GetDay(int dayNum) {
             var weights = _strategy.CalculateWeights(file);
 
             Check.That(weights).Not.IsEmpty();
-            Check.That(weights).ContainsOnlyElementsThatMatch(w => w >= 0 && w <= 100);
+            Check.That(weights).ContainsOnlyElementsThatMatch(w => w.Weight >= 0 && w.Weight <= 100);
         }
 
         [Fact]
@@ -165,7 +165,7 @@ public bool Validate(int[] items) {
             var weights = _strategy.CalculateWeights(file);
 
             Check.That(weights).Not.IsEmpty();
-            Check.That(weights).ContainsOnlyElementsThatMatch(w => w >= 0 && w <= 100);
+            Check.That(weights).ContainsOnlyElementsThatMatch(w => w.Weight >= 0 && w.Weight <= 100);
         }
 
         [Fact]
@@ -179,7 +179,7 @@ public void C() { if (true) { if (true) { if (true) { } } } }
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            Check.That(weights).ContainsOnlyElementsThatMatch(w => w >= 0 && w <= 100);
+            Check.That(weights).ContainsOnlyElementsThatMatch(w => w.Weight >= 0 && w.Weight <= 100);
         }
 
         [Fact]
@@ -211,10 +211,13 @@ public int Complex(int a, int b, int c, int d) {
             var simpleWeights = _strategy.CalculateWeights(simpleFile);
             var complexWeights = _strategy.CalculateWeights(complexFile);
 
-            var simpleAvg = simpleWeights.Average();
-            var complexAvg = complexWeights.Average();
+            var simpleAvg = simpleWeights.Average(w => w.Weight);
+            var complexAvg = complexWeights.Average(w => w.Weight);
 
-            Check.That(complexAvg >= simpleAvg || complexWeights.Max() > simpleWeights.Max()).IsTrue();
+            Check.That(complexAvg >= simpleAvg || complexWeights.Max(w => w.Weight) > simpleWeights.Max(w => w.Weight)).IsTrue();
         }
     }
 }
+
+
+

@@ -47,9 +47,9 @@ public void Test() {
             var mccabeWeights = _mccabeStrategy.CalculateWeights(file);
             var halsteadWeights = _halsteadStrategy.CalculateWeights(file);
 
-            Check.That(nestingWeights[2]).IsEqualTo(1);
-            Check.That(mccabeWeights[2]).IsEqualTo(1);
-            Check.That(halsteadWeights[2]).IsStrictlyGreaterThan(-1.0);
+            Check.That(nestingWeights[2].Weight).IsEqualTo(1);
+            Check.That(mccabeWeights[2].Weight).IsEqualTo(1);
+            Check.That(halsteadWeights[2].Weight).IsStrictlyGreaterThan(-1.0);
         }
 
         [Fact]
@@ -67,9 +67,9 @@ public void Test() {
             var mccabeWeights = _mccabeStrategy.CalculateWeights(file);
             var halsteadWeights = _halsteadStrategy.CalculateWeights(file);
 
-            Check.That(nestingWeights[3]).IsStrictlyGreaterThan(1);
-            Check.That(mccabeWeights[3]).IsStrictlyGreaterThan(1);
-            Check.That(halsteadWeights[3]).IsStrictlyGreaterThan(0);
+            Check.That(nestingWeights[3].Weight).IsStrictlyGreaterThan(1);
+            Check.That(mccabeWeights[3].Weight).IsStrictlyGreaterThan(1);
+            Check.That(halsteadWeights[3].Weight).IsStrictlyGreaterThan(0);
         }
 
         [Fact]
@@ -90,8 +90,8 @@ public void Test() {
             var nestingWeights = _nestingStrategy.CalculateWeights(file);
             var mccabeWeights = _mccabeStrategy.CalculateWeights(file);
 
-            Check.That(nestingWeights[5]).IsStrictlyGreaterThan(1);
-            Check.That(mccabeWeights[5]).IsStrictlyGreaterThan(1);
+            Check.That(nestingWeights[5].Weight).IsStrictlyGreaterThan(1);
+            Check.That(mccabeWeights[5].Weight).IsStrictlyGreaterThan(1);
         }
 
         [Fact]
@@ -109,9 +109,9 @@ public void Test() {
             var mccabeWeights = _mccabeStrategy.CalculateWeights(file);
             var halsteadWeights = _halsteadStrategy.CalculateWeights(file);
 
-            Check.That(nestingWeights[3]).IsStrictlyGreaterThan(1);
-            Check.That(mccabeWeights[3]).IsStrictlyGreaterThan(1);
-            Check.That(halsteadWeights[3]).IsStrictlyGreaterThan(0);
+            Check.That(nestingWeights[3].Weight).IsStrictlyGreaterThan(1);
+            Check.That(mccabeWeights[3].Weight).IsStrictlyGreaterThan(1);
+            Check.That(halsteadWeights[3].Weight).IsStrictlyGreaterThan(0);
         }
 
         [Fact]
@@ -137,9 +137,9 @@ public void Test() {
             var mccabeWeights = _mccabeStrategy.CalculateWeights(file);
             var halsteadWeights = _halsteadStrategy.CalculateWeights(file);
 
-            Check.That(nestingWeights[6]).IsStrictlyGreaterThan(1);
-            Check.That(mccabeWeights[6]).IsStrictlyGreaterThan(1);
-            Check.That(halsteadWeights[6]).IsStrictlyGreaterThan(0);
+            Check.That(nestingWeights[6].Weight).IsStrictlyGreaterThan(1);
+            Check.That(mccabeWeights[6].Weight).IsStrictlyGreaterThan(1);
+            Check.That(halsteadWeights[6].Weight).IsStrictlyGreaterThan(0);
         }
 
         [Fact]
@@ -159,9 +159,9 @@ public void Test() {
             var mccabeWeights = _mccabeStrategy.CalculateWeights(file);
             var halsteadWeights = _halsteadStrategy.CalculateWeights(file);
 
-            Check.That(nestingWeights.Max()).IsStrictlyGreaterThan(1);
-            Check.That(mccabeWeights.Max()).IsStrictlyGreaterThan(1);
-            Check.That(halsteadWeights.Max()).IsStrictlyGreaterThan(5);
+            Check.That(nestingWeights.Max(w => w.Weight)).IsStrictlyGreaterThan(1);
+            Check.That(mccabeWeights.Max(w => w.Weight)).IsStrictlyGreaterThan(1);
+            Check.That(halsteadWeights.Max(w => w.Weight)).IsStrictlyGreaterThan(5);
         }
 
         [Fact]
@@ -177,9 +177,13 @@ public void Test() {
             var mccabeWeights = _mccabeStrategy.CalculateWeights(file);
             var halsteadWeights = _halsteadStrategy.CalculateWeights(file);
 
-            Check.That(nestingWeights[2]).IsEqualTo(1);
-            Check.That(mccabeWeights[2]).IsEqualTo(1);
-            Check.That(halsteadWeights[2]).IsStrictlyGreaterThan(0);
+            Check.That(nestingWeights[2].Weight).IsEqualTo(1);
+            Check.That(mccabeWeights[2].Weight).IsEqualTo(1);
+            Check.That(halsteadWeights[2].Weight).IsStrictlyGreaterThan(0);
         }
     }
 }
+
+
+
+

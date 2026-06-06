@@ -22,7 +22,7 @@ public void Test() {
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            Check.That(weights[2]).IsEqualTo(1);
+            Check.That(weights[2].Weight).IsEqualTo(1);
         }
 
         [Fact]
@@ -37,7 +37,7 @@ public void Test() {
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            Check.That(weights[3]).IsEqualTo(2);
+            Check.That(weights[3].Weight).IsEqualTo(2);
         }
 
         [Fact]
@@ -54,8 +54,8 @@ public void Test() {
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            Check.That(weights[3]).IsEqualTo(2);
-            Check.That(weights[5]).IsEqualTo(2);
+            Check.That(weights[3].Weight).IsEqualTo(2);
+            Check.That(weights[5].Weight).IsEqualTo(2);
         }
 
         [Fact]
@@ -72,7 +72,7 @@ public void Test() {
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            Check.That(weights[4]).IsEqualTo(3);
+            Check.That(weights[4].Weight).IsEqualTo(3);
         }
 
         [Fact]
@@ -91,7 +91,7 @@ public void Test() {
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            Check.That(weights[5]).IsEqualTo(4);
+            Check.That(weights[5].Weight).IsEqualTo(4);
         }
 
         [Fact]
@@ -106,7 +106,7 @@ public void Test() {
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            Check.That(weights[3]).IsEqualTo(3);
+            Check.That(weights[3].Weight).IsEqualTo(3);
         }
 
         [Fact]
@@ -119,7 +119,7 @@ public void Test() {
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            Check.That(weights[2]).IsEqualTo(2);
+            Check.That(weights[2].Weight).IsEqualTo(2);
         }
 
         [Fact]
@@ -143,7 +143,7 @@ public void Test() {
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            Check.That(weights[6]).IsEqualTo(4);
+            Check.That(weights[6].Weight).IsEqualTo(4);
         }
 
         [Fact]
@@ -160,7 +160,7 @@ public void Test() {
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            Check.That(weights[4]).IsEqualTo(3);
+            Check.That(weights[4].Weight).IsEqualTo(3);
         }
 
         [Fact]
@@ -176,7 +176,7 @@ public void Test() {
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            Check.That(weights[6]).IsEqualTo(1);
+            Check.That(weights[6].Weight).IsEqualTo(1);
         }
 
         [Fact]
@@ -193,8 +193,11 @@ public void Test() {
             var file = ComplexityTestHelper.CreateSourceFile(code);
             var weights = _strategy.CalculateWeights(file);
 
-            Check.That(weights[3]).IsStrictlyGreaterThan(1);
-            Check.That(weights[5]).IsStrictlyGreaterThan(1);
+            Check.That(weights[3].Weight).IsStrictlyGreaterThan(1);
+            Check.That(weights[5].Weight).IsStrictlyGreaterThan(1);
         }
     }
 }
+
+
+

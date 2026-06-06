@@ -31,7 +31,7 @@ namespace ComplexityCoverage.Cli
             var solutionArg    = GetArgument(args, "--solution", "-s")     ?? cfg?.Solution;
             var testProjectArg = GetArgument(args, "--test-project", "-t") ?? cfg?.TestProject;
             var outputArg      = GetArgument(args, "--output", "-o")       ?? cfg?.Output ?? "coverage-report.html";
-            var complexityArg  = GetArgument(args, "--complexity", "-c")   ?? cfg?.Complexity ?? "mi";
+            var complexityArg  = GetArgument(args, "--complexity", "-c")   ?? cfg?.Complexity ?? "cognitive";
             var timeoutArg     = GetArgument(args, "--timeout", null)      ?? cfg?.Timeout?.ToString() ?? "15";
             var coverageFileArg   = GetArgument(args, "--coverage-file", "-cf")  ?? cfg?.CoverageFile;
             var coverageFormatArg = GetArgument(args, "--coverage-format", null) ?? cfg?.CoverageFormat;
@@ -112,18 +112,20 @@ namespace ComplexityCoverage.Cli
 
             if (keys.Contains("all"))
             {
-                keys = ["mccabe", "nesting", "halstead", "mi"];
+                keys = ["mccabe", "halstead", "mi", "nesting", "cognitive" ];
             }
 
             var result = new List<(string, IComplexityStrategy)>();
             foreach (var key in keys)
             {
-                var (name, strategy) = key switch
+                var (name, strategy) = key.ToLower() switch
                 {
                     "nesting" => ("Nesting", (IComplexityStrategy)new NestingComplexityStrategy()),
+                    "cognitive" => ("Cognitive", new CognitiveComplexityStrategy()),
                     "halstead" or "halvol" => ("Halstead", new HalsteadVolumeComplexityStrategy()),
                     "mi" or "maintainability" or "index" => ("MI", new MaintainabilityIndexComplexityStrategy(new HalsteadVolumeComplexityStrategy(), new McCabeComplexityStrategy())),
-                    _ => ("McCabe", new McCabeComplexityStrategy())
+                    "mccabe" => ("McCabe", new McCabeComplexityStrategy()),
+                    _ => ("cognitive", new CognitiveComplexityStrategy())
                 };
                 if (!result.Any(r => r.Item1 == name))
                 {
@@ -152,8 +154,8 @@ namespace ComplexityCoverage.Cli
             await Console.Out.WriteLineAsync("                               html         HTML summary report only (default)");
             await Console.Out.WriteLineAsync("                               zip          ZIP archive only (summary HTML + annotated per-file HTML)");
             await Console.Out.WriteLineAsync("                               zip+console  ZIP archive + console table");
-            await Console.Out.WriteLineAsync("  -c, --complexity <strategy>  Complexity strategy: mccabe, nesting, halstead, mi, all (default: mi)");
-            await Console.Out.WriteLineAsync("                               Comma-separated for multiple: mccabe,halstead");
+            await Console.Out.WriteLineAsync("  -c, --complexity <strategy>  Complexity strategy: mccabe, nesting, cognitive, halstead, mi, all (default: cognitive)");
+            await Console.Out.WriteLineAsync("                               Comma-separated for multiple: mccabe,cognitive,halstead");
             await Console.Out.WriteLineAsync("      --timeout <minutes>     Test execution timeout in minutes (default: 15)");
             await Console.Out.WriteLineAsync("  -cf, --coverage-file <path>  Path to an existing coverage file (skips test run)");
             await Console.Out.WriteLineAsync("      --coverage-format <fmt>  Coverage format: cobertura (default), opencover (auto-detected if omitted)");

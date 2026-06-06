@@ -20,22 +20,24 @@ namespace ComplexityCoverage.Domain.Complexity
             _syntaxTreeCache = syntaxTreeCache;
         }
 
-        public double CalculateWeight(LineOfCode line, SourceFile context)
+        public LineComplexity CalculateWeight(LineOfCode line, SourceFile context)
         {
             var cached = _syntaxTreeCache.GetOrCreateSyntaxTree(context.Content);
             var data = (CachedSyntaxTreeData)cached;
-            return this.CalculateLineWeight(line.LineNumber, data.Root, data.Tree);
+            var weight = this.CalculateLineWeight(line.LineNumber, data.Root, data.Tree);
+            return new LineComplexity(weight);
         }
 
-        public IReadOnlyList<double> CalculateWeights(SourceFile file)
+        public virtual IReadOnlyList<LineComplexity> CalculateWeights(SourceFile file)
         {
             var cached = _syntaxTreeCache.GetOrCreateSyntaxTree(file.Content);
             var data = (CachedSyntaxTreeData)cached;
-            var weights = new double[file.Lines.Count];
+            var weights = new LineComplexity[file.Lines.Count];
 
             for (int i = 0; i < file.Lines.Count; i++)
             {
-                weights[i] = this.CalculateLineWeight(file.Lines[i].LineNumber, data.Root, data.Tree);
+                var weight = this.CalculateLineWeight(file.Lines[i].LineNumber, data.Root, data.Tree);
+                weights[i] = new LineComplexity(weight);
             }
 
             return weights;

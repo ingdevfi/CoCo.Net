@@ -75,7 +75,7 @@ namespace ComplexityCoverage.Domain.Complexity
             var content = root.SyntaxTree.GetText().ToString();
             var loc = new LineOfCode(lineNumber, "");
             var singleLineFile = new SourceFile("temp.cs", "temp.cs", content, [loc]);
-            double halvol = _halsteadStrategy.CalculateWeight(loc, singleLineFile);
+            double halvol = _halsteadStrategy.CalculateWeight(loc, singleLineFile).Weight;
 
             return CalculateMI(metrics.Cyclo, halvol, metrics.Sloc);
         }
@@ -94,7 +94,7 @@ namespace ComplexityCoverage.Domain.Complexity
             var lineOfCodes = methodLines.Select(ln => new LineOfCode(ln, "")).ToArray();
             var sourceFile = new SourceFile("temp.cs", "temp.cs", content, lineOfCodes);
 
-            double cyclo = _mccabeStrategy.CalculateWeight(lineOfCodes[0], sourceFile);
+            double cyclo = _mccabeStrategy.CalculateWeight(lineOfCodes[0], sourceFile).Weight;
             int sloc = CountSourceLinesOfCode(method);
             return new MethodLevelMetrics(cyclo, sloc);
         }
