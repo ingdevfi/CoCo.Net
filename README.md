@@ -20,25 +20,25 @@ CoCo.Net offers many strategies to assess language complexity. Many of them refe
 Install the tool globally from NuGet:
 
 ```bash
-dotnet tool install --global ComplexityCoverage
+dotnet tool install --global CoCo.Net
 ```
 
 Then invoke directly:
 
 ```bash
-complexity-coverage --solution path/to/Solution.sln --test-project path/to/Tests.csproj
+CoCo.Net --solution path/to/Solution.sln --test-project path/to/Tests.csproj
 ```
 
 To update to the latest version:
 
 ```bash
-dotnet tool update --global ComplexityCoverage
+dotnet tool update --global CoCo.Net
 ```
 
 To uninstall:
 
 ```bash
-dotnet tool uninstall --global ComplexityCoverage
+dotnet tool uninstall --global CoCo.Net
 ```
 
 #### Option 2: From Source
@@ -46,7 +46,7 @@ dotnet tool uninstall --global ComplexityCoverage
 Clone and build from source:
 
 ```bash
-git clone https://github.com/ingdevfi/ComplexityCoverage.Net.git
+git clone https://github.com/ingdevfi/CoCo.Net.git
 cd ComplexityCoverage.Net
 dotnet build
 ```
@@ -70,7 +70,7 @@ dotnet build
 > dotnet test Solution.sln --collect:"XPlat Code Coverage" --results-directory ./coverage
 >
 > # Step 2 — analyse without re-running tests
-> complexity-coverage \
+> CoCo.Net \
 >   --solution Solution.sln \
 >   --coverage-file ./coverage/<guid>/coverage.cobertura.xml
 > ```
@@ -78,7 +78,7 @@ dotnet build
 #### As a Global Tool
 
 ```bash
-complexity-coverage \
+CoCo.Net \
   --solution path/to/Solution.sln \
   --output coverage-report.html \
   --complexity mi \
@@ -88,7 +88,7 @@ complexity-coverage \
 Using a specific test project instead of auto-detection:
 
 ```bash
-complexity-coverage \
+CoCo.Net \
   --solution path/to/Solution.sln \
   --test-project path/to/Tests.csproj
 ```
@@ -96,7 +96,7 @@ complexity-coverage \
 Using an existing coverage file **(recommended — skips test execution entirely)**:
 
 ```bash
-complexity-coverage \
+CoCo.Net \
   --solution path/to/Solution.sln \
   --coverage-file path/to/coverage.cobertura.xml
 ```
@@ -140,8 +140,8 @@ Writes a standalone HTML summary report. No console table is printed.
 
 ```bash
 # Both are equivalent
-complexity-coverage --solution Solution.sln
-complexity-coverage --solution Solution.sln --output-mode html --output report.html
+CoCo.Net --solution Solution.sln
+CoCo.Net --solution Solution.sln --output-mode html --output report.html
 ```
 
 ### `console` mode
@@ -149,7 +149,7 @@ complexity-coverage --solution Solution.sln --output-mode html --output report.h
 Console summary table only. Useful for CI pipelines where you only want the exit code and metrics in the log.
 
 ```bash
-complexity-coverage --solution Solution.sln --output-mode console
+CoCo.Net --solution Solution.sln --output-mode console
 ```
 
 ### `zip` mode
@@ -164,7 +164,7 @@ Generates a single ZIP archive (no standalone `.html` file). The archive contain
     - Syntax-highlighted C# source code
 
 ```bash
-complexity-coverage \
+CoCo.Net \
   --solution Solution.sln \
   --output-mode zip \
   --output report.html
@@ -176,7 +176,7 @@ complexity-coverage \
 Same as `zip` but also prints the console table.
 
 ```bash
-complexity-coverage \
+CoCo.Net \
   --solution Solution.sln \
   --output-mode zip+console \
   --output report.html
@@ -203,10 +203,10 @@ When `--test-project` is **not** provided, the tool runs `dotnet test` on the so
 
 ```bash
 # Auto-detect all test projects (recommended for most cases)
-complexity-coverage --solution path/to/Solution.sln
+CoCo.Net --solution path/to/Solution.sln
 
 # Target a specific test project
-complexity-coverage --solution path/to/Solution.sln --test-project path/to/Tests.csproj
+CoCo.Net --solution path/to/Solution.sln --test-project path/to/Tests.csproj
 ```
 
 ## Complexity Strategies
@@ -299,13 +299,13 @@ dotnet test path/to/Tests.csproj \
 
 ```bash
 # Auto-detect format (by extension / XML root)
-complexity-coverage \
+CoCo.Net \
   --solution path/to/Solution.sln \
   --test-project path/to/Tests.csproj \
   --coverage-file ./coverage/coverage.cobertura.xml
 
 # Force OpenCover format
-complexity-coverage \
+CoCo.Net \
   --solution path/to/Solution.sln \
   --test-project path/to/Tests.csproj \
   --coverage-file ./coverage/opencover.xml \
@@ -335,7 +335,7 @@ CLI arguments take precedence over config-file values, so you can always overrid
 Use `--config` to point to a file at a custom path:
 
 ```bash
-complexity-coverage --config ./ci/coco.config.json
+CoCo.Net --config ./ci/coco.config.json
 ```
 
 📖 Full reference including all properties and `themeOverrides` keys: [doc/configuration.md](doc/configuration.md)
@@ -352,26 +352,6 @@ The project follows **Clean Architecture** (Onion Architecture) principles:
 This layered design ensures complexity strategies are pluggable, coverage formats are extensible, and the core logic remains testable in isolation.
 
 See [ARCHITECTURE.md](doc/ARCHITECTURE.md) for detailed design documentation.
-
-## Building from Source
-
-### Build
-
-```bash
-dotnet build
-```
-
-### Run Tests
-
-```bash
-dotnet test
-```
-
-### Build Release
-
-```bash
-dotnet publish -c Release -o ./publish
-```
 
 ## Understanding the Output
 
@@ -408,9 +388,9 @@ When using `--output-mode zip` or `zip+console`, the archive contains:
 All HTML output (standalone report and ZIP per-file views) is themed. Use `--theme` to select a theme:
 
 ```bash
-complexity-coverage --solution Solution.sln --theme light
-complexity-coverage --solution Solution.sln --theme dark-monokai   # default
-complexity-coverage --solution Solution.sln --theme ./my-theme.json
+CoCo.Net --solution Solution.sln --theme light
+CoCo.Net --solution Solution.sln --theme dark-monokai   # default
+CoCo.Net --solution Solution.sln --theme ./my-theme.json
 ```
 
 Two built-in themes are shipped as editable JSON files next to the binary in the `themes/` folder:
@@ -435,39 +415,55 @@ You can freely edit the JSON files or create new ones. All colour values are sta
 | `gutterFg` / `gutterBorder` / `complexityFg` / `rowBorder` / `stickyHeaderBg` | Hex colour | Per-file view gutter and layout colours |
 | `syntaxKeyword` / `syntaxControlFlow` / `syntaxString` / `syntaxNumber` / `syntaxComment` / `syntaxPreproc` / `syntaxType` / `syntaxDefault` | Hex colour | Syntax highlighting token colours |
 
-### "No source files found"
+## Multi-Platform Publishing
 
-**Solution**: Check that source files exist in expected locations. The tool excludes:
-- `bin/` directories
-- `obj/` directories
-- `Tests` directories
+The tool can be published for Windows, Linux, and macOS. Choose the target platform when publishing:
 
-### "Tests failed with exit code 1"
+### Windows x64 (default)
 
-**Root cause**: CoCo.Net re-ran your test suite and it failed — due to environment differences, locked files, or flaky tests.
-
-**Best solution**: Generate the coverage file independently and pass it with `--coverage-file` so CoCo.Net never needs to run tests:
 ```bash
-dotnet test path/to/Tests.csproj \
-  --collect:"XPlat Code Coverage" \
-  --results-directory ./coverage
-
-complexity-coverage \
-  --solution Solution.sln \
-  --coverage-file ./coverage/<guid>/coverage.cobertura.xml
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+# Output: bin/Release/net10.0/win-x64/publish/CoCo.Net.exe
 ```
 
-**Alternatively**, run tests manually to diagnose the failure:
+### Windows x86
+
 ```bash
-dotnet test path/to/Tests.csproj
+dotnet publish -c Release -r win-x86 --self-contained true -p:PublishSingleFile=true
+# Output: bin/Release/net10.0/win-x86/publish/CoCo.Net.exe
 ```
 
-### "No cobertura coverage file found"
+### Linux x64
 
-**Solution**: Ensure test project has Coverlet installed:
 ```bash
-dotnet add package Coverlet.Collector
+dotnet publish -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=true
+# Output: bin/Release/net10.0/linux-x64/publish/CoCo.Net
 ```
+
+### macOS x64
+
+```bash
+dotnet publish -c Release -r osx-x64 --self-contained true -p:PublishSingleFile=true
+# Output: bin/Release/net10.0/osx-x64/publish/CoCo.Net
+```
+
+### macOS ARM64 (M1/M2 chips)
+
+```bash
+dotnet publish -c Release -r osx-arm64 --self-contained true -p:PublishSingleFile=true
+# Output: bin/Release/net10.0/osx-arm64/publish/CoCo.Net
+```
+
+### Cross-platform NuGet Package
+
+For NuGet publishing, use R2R (ReadyToRun) instead of self-contained to keep package size small:
+
+```bash
+dotnet pack -c Release -p:PublishSingleFile=false -o ./nuget-output
+# Publish ComplexityCoverage.*.nupkg and ComplexityCoverage.*.snupkg
+```
+
+Users install via `dotnet tool install --global CoCo.Net` and the .NET Runtime on their machine is used.
 
 ## License
 

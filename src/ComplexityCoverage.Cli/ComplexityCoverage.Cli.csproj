@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,13 +6,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
+    <!-- Output Assembly Name -->
+    <OutputAssembly>CoCo.Net</OutputAssembly>
+
     <!-- NuGet Package Settings -->
-    <PackageId>ComplexityCoverage</PackageId>
+    <PackageId>CoCo.Net</PackageId>
     <PackAsTool>true</PackAsTool>
-    <ToolCommandName>complexity-coverage</ToolCommandName>
+    <ToolCommandName>CoCo.Net</ToolCommandName>
     <Version>0.0.1</Version>
     <ReleaseVersion>0.0.1</ReleaseVersion>
-    <Title>ComplexityCoverage</Title>
+    <Title>CoCo.Net</Title>
     <Description>Calculate complexity-weighted test coverage for C# projects. Weights could be computed with many strategies: McCabe, Haltead Volume, Congitive,...</Description>
     <Authors>Votre Nom</Authors>
     <RepositoryUrl>https://github.com/ingdevfi/CoCo.Net</RepositoryUrl>
@@ -25,9 +28,19 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <IconUrl>https://github.com/ingdevfi/CoCo.Net/raw/main/resources/White_logo_2.jpg</IconUrl>
     <LicenseUrl>https://github.com/ingdevfi/CoCo.Net/LICENCE</LicenseUrl>
+    <ApplicationIcon>White_logo.ico</ApplicationIcon>
+    <AssemblyTitle>CoCo.Net</AssemblyTitle>
+    <AssemblyName>CoCo.Net</AssemblyName>
+
+    <!-- Multi-platform publishing configuration -->
+    <!-- Default to win-x64, override with: -p:RuntimeIdentifier=linux-x64 or set RID environment variable -->
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
+
+    <!-- Self-contained publishing (default: false for NuGet package, set to true for standalone binary) -->
+    <PublishReadyToCompile>false</PublishReadyToCompile>
   </PropertyGroup>
 
-  <!-- Self-contained single-file settings only apply during dotnet publish, not during build/test -->
+  <!-- Platform-specific self-contained settings -->
   <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
     <SelfContained>true</SelfContained>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
@@ -48,6 +61,10 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <Link>themes\%(Filename)%(Extension)</Link>
     </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="White_logo.ico" />
   </ItemGroup>
 
 </Project>
